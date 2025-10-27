@@ -70,7 +70,7 @@ public class ApiGatewayVerticle extends AbstractVerticle {
         fail(ctx, 400, "Invalid vehicle data");
         return;
       }
-      
+
       // Respond immediately with acceptance
       JsonObject immediateResponse = new JsonObject()
           .put("message", "Vehicle processing started")

@@ -11,10 +11,22 @@
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
     <maven.compiler.release>21</maven.compiler.release>
-    <vertx.version>5.0.5</vertx.version>
+    <vertx.version>5.0.4</vertx.version>
     <main.verticle>com.cresterida.gateway.ApiGatewayVerticle</main.verticle>
     <vertx-maven-plugin.version>1.0.28</vertx-maven-plugin.version>
   </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.vertx</groupId>
+                <artifactId>vertx-stack-depchain</artifactId>
+                <version>${vertx.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
   <dependencies>
     <dependency>
       <groupId>io.vertx</groupId>
@@ -24,12 +36,10 @@
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-web</artifactId>
-      <version>${vertx.version}</version>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-web-client</artifactId>
-      <version>${vertx.version}</version>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
