@@ -1,8 +1,8 @@
-package com.example.gateway.handlers;
+package com.creterida.gateway.handlers;
 
-import com.example.gateway.model.ServiceDefinition;
-import com.example.gateway.ratelimit.TokenBucket;
-import com.example.gateway.registry.ServiceRegistry;
+import com.creterida.gateway.model.ServiceDefinition;
+import com.creterida.gateway.ratelimit.TokenBucket;
+import com.creterida.gateway.registry.ServiceRegistry;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;

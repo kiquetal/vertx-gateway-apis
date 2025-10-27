@@ -1,5 +1,6 @@
 package com.cresterida.gateway;
 
+import com.cresterida.gateway.handlers.AdminServiceHandler;
 import com.cresterida.gateway.model.ServiceDefinition;
 import com.cresterida.gateway.ratelimit.TokenBucket;
 import com.cresterida.gateway.registry.ServiceRegistry;
@@ -24,10 +25,10 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ApiGatewayVerticle extends AbstractVerticle {
-
-  private ServiceRegistry registry;
-  private WebClient client;
-  private final Map<String, TokenBucket> limiters = new ConcurrentHashMap<>();
+    private ServiceRegistry registry;
+    private WebClient client;
+    private final Map<String, TokenBucket> limiters = new ConcurrentHashMap<>();
+    private AdminServiceHandler adminHandler;
 
   @Override
   public void start(Promise<Void> startPromise) {
@@ -41,15 +42,17 @@ public class ApiGatewayVerticle extends AbstractVerticle {
       .setPipeliningLimit(64)
     );
 
+    this.adminHandler = new AdminServiceHandler(registry, limiters);
+
     Router router = Router.router(vertx);
     router.route().handler(BodyHandler.create());
 
-    // Admin API
-    router.post("/admin/services").handler(this::handleAddService);
-    router.get("/admin/services").handler(this::handleListServices);
-    router.get("/admin/services/:id").handler(this::handleGetService);
-    router.put("/admin/services/:id").handler(this::handleUpdateService);
-    router.delete("/admin/services/:id").handler(this::handleDeleteService);
+    // Admin API routes
+    router.post("/admin/services").handler(adminHandler::handleAddService);
+    router.get("/admin/services").handler(adminHandler::handleListServices);
+    router.get("/admin/services/:id").handler(adminHandler::handleGetService);
+    router.put("/admin/services/:id").handler(adminHandler::handleUpdateService);
+    router.delete("/admin/services/:id").handler(adminHandler::handleDeleteService);
 
     // Gateway catch-all
     router.route().handler(this::resolveServiceHandler);
@@ -77,62 +80,6 @@ public class ApiGatewayVerticle extends AbstractVerticle {
       try { return Integer.parseInt(prop); } catch (Exception ignored) {}
     }
     return 8080;
-  }
-
-  // ===== Admin Handlers =====
-
-  private void handleAddService(RoutingContext ctx) {
-    try {
-      JsonObject body = ctx.body().asJsonObject();
-      ServiceDefinition def = ServiceDefinition.fromJson(body);
-      registry.add(def);
-      limiters.put(def.getId(), new TokenBucket(def.getBurstCapacity(), def.getRateLimitPerSecond()));
-      ctx.response().setStatusCode(201)
-        .putHeader(HttpHeaders.CONTENT_TYPE, "application/json")
-        .end(def.toJson().encode());
-    } catch (Exception e) {
-      fail(ctx, 400, e.getMessage());
-    }
-  }
-
-  private void handleListServices(RoutingContext ctx) {
-    List<ServiceDefinition> list = registry.list();
-    JsonArray arr = new JsonArray();
-    list.forEach(sd -> arr.add(sd.toJson()));
-    ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, "application/json").end(arr.encode());
-  }
-
-  private void handleGetService(RoutingContext ctx) {
-    String id = ctx.pathParam("id");
-    registry.getById(id)
-      .ifPresentOrElse(sd -> ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, "application/json").end(sd.toJson().encode()),
-        () -> fail(ctx, 404, "Service not found"));
-  }
-
-  private void handleUpdateService(RoutingContext ctx) {
-    String id = ctx.pathParam("id");
-    try {
-      JsonObject body = ctx.body().asJsonObject();
-      ServiceDefinition incoming = ServiceDefinition.fromJson(body.put("id", id));
-      Optional<ServiceDefinition> updated = registry.update(id, incoming);
-      if (updated.isEmpty()) { fail(ctx, 404, "Service not found"); return; }
-      ServiceDefinition def = updated.get();
-      limiters.put(def.getId(), new TokenBucket(def.getBurstCapacity(), def.getRateLimitPerSecond()));
-      ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, "application/json").end(def.toJson().encode());
-    } catch (Exception e) {
-      fail(ctx, 400, e.getMessage());
-    }
-  }
-
-  private void handleDeleteService(RoutingContext ctx) {
-    String id = ctx.pathParam("id");
-    Optional<ServiceDefinition> removed = registry.remove(id);
-    if (removed.isPresent()) {
-      limiters.remove(id);
-      ctx.response().setStatusCode(204).end();
-    } else {
-      fail(ctx, 404, "Service not found");
-    }
   }
 
   // ===== Gateway Handlers =====
