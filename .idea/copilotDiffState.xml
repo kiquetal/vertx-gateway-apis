@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CopilotDiffPersistence">
+    <option name="pendingDiffs">
+      <map>
+        <entry key="$PROJECT_DIR$/Dockerfile">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/Dockerfile" />
+              <option name="updatedContent" value="# Build stage&#10;FROM maven:3.9-eclipse-temurin-21 AS builder&#10;WORKDIR /build&#10;# Copy only the POM first to cache dependencies&#10;COPY pom.xml .&#10;RUN mvn dependency:go-offline&#10;&#10;# Copy source and build&#10;COPY src ./src&#10;RUN mvn clean package -DskipTests&#10;&#10;# Run stage&#10;FROM eclipse-temurin:21-jre-jammy&#10;WORKDIR /app&#10;&#10;# Create non-root user for security&#10;RUN addgroup --system --gid 1001 vertx &amp;&amp; \&#10;    adduser --system --uid 1001 --gid 1001 vertx&#10;&#10;# Copy only the fat JAR from builder stage&#10;COPY --from=builder /build/target/*-fat.jar app.jar&#10;RUN chown -R vertx:vertx /app&#10;&#10;# Switch to non-root user&#10;USER vertx&#10;&#10;# Environment variables&#10;ENV LOG_LEVEL=INFO&#10;ENV SHUTDOWN_TIMEOUT_MS=30000&#10;&#10;# Expose the application port&#10;EXPOSE 8080&#10;&#10;# Set the entry point with Java 21 optimizations&#10;ENTRYPOINT [&quot;java&quot;, \&#10;    &quot;--enable-preview&quot;, \&#10;    &quot;--enable-native-access=ALL-UNNAMED&quot;, \&#10;    &quot;-XX:+UseZGC&quot;, \&#10;    &quot;-XX:+ZGenerational&quot;, \&#10;    &quot;-Djdk.virtualThreadScheduler.parallelism=16&quot;, \&#10;    &quot;-jar&quot;, &quot;app.jar&quot;]" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/src/main/docker/.dockerignore">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/src/main/docker/.dockerignore" />
+              <option name="updatedContent" value="# Git&#10;.git&#10;.gitignore&#10;&#10;# Maven&#10;target/&#10;!target/*-fat.jar&#10;dependency-reduced-pom.xml&#10;&#10;# IDE files&#10;.idea/&#10;*.iml&#10;.vscode/&#10;.settings/&#10;.project&#10;.classpath&#10;&#10;# Logs&#10;*.log&#10;&#10;# OS files&#10;.DS_Store&#10;Thumbs.db" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>

@@ -1,0 +1,23 @@
+# Git
+.git
+.gitignore
+
+# Maven
+target/
+!target/*-fat.jar
+dependency-reduced-pom.xml
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
