@@ -1,6 +1,6 @@
 package com.cresterida.gateway.registry;
 
-import com.example.gateway.model.ServiceDefinition;
+import com.cresterida.gateway.model.ServiceDefinition;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
