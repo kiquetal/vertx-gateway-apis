@@ -45,6 +45,10 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Set current date
+      id: date
+      run: echo "date=$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
+
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
@@ -54,6 +58,11 @@ jobs:
         tags: |
           ghcr.io/${{ github.repository }}:latest
           ghcr.io/${{ github.repository }}:${{ github.sha }}
+          ghcr.io/${{ github.repository }}:${{ steps.date.outputs.date }}
+          ghcr.io/${{ github.repository }}:amd64-latest
+          ghcr.io/${{ github.repository }}:arm64-latest
+          ghcr.io/${{ github.repository }}:amd64-${{ steps.date.outputs.date }}
+          ghcr.io/${{ github.repository }}:arm64-${{ steps.date.outputs.date }}
         cache-from: |
           type=gha
           type=registry,ref=ghcr.io/${{ github.repository }}:latest
