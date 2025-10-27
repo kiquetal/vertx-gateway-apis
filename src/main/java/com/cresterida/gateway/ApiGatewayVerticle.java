@@ -109,32 +109,30 @@ public class ApiGatewayVerticle extends AbstractVerticle {
   @Override
   public void stop(Promise<Void> stopPromise) {
     LOGGER.info("ApiGatewayVerticle stopping: initiating graceful shutdown...");
-    // Close HTTP server first to stop accepting new requests
+
+    // First close the WebClient to stop new requests
+    if (client != null) {
+      try {
+        client.close();
+        LOGGER.info("WebClient closed successfully");
+      } catch (Exception e) {
+        LOGGER.warn("WebClient close exception: {}", e.getMessage());
+      }
+    }
+
+    // Then close HTTP server to stop accepting new requests
     if (httpServer != null) {
       httpServer.close().onComplete(ar -> {
         if (ar.succeeded()) {
-          LOGGER.info("HTTP server closed.");
+          LOGGER.info("HTTP server closed successfully");
         } else {
           LOGGER.warn("HTTP server close error: {}", ar.cause() != null ? ar.cause().getMessage() : "unknown");
         }
-        // Close WebClient resources
-        if (client != null) {
-          try {
-            client.close();
-          } catch (Exception e) {
-            LOGGER.debug("WebClient close exception: {}", e.getMessage());
-          }
-        }
+        LOGGER.info("ApiGatewayVerticle shutdown complete");
         stopPromise.complete();
       });
     } else {
-      if (client != null) {
-        try {
-          client.close();
-        } catch (Exception e) {
-          LOGGER.debug("WebClient close exception: {}", e.getMessage());
-        }
-      }
+      LOGGER.info("ApiGatewayVerticle shutdown complete (no HTTP server was running)");
       stopPromise.complete();
     }
   }
