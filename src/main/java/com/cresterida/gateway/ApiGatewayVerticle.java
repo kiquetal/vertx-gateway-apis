@@ -21,6 +21,10 @@ import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.ext.web.client.HttpRequest;
 import io.vertx.ext.web.client.HttpResponse;
+import io.vertx.micrometer.MicrometerMetricsOptions;
+import io.vertx.micrometer.VertxPrometheusOptions;
+import io.vertx.micrometer.backends.BackendRegistries;
+import io.vertx.micrometer.PrometheusScrapingHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +42,7 @@ public class ApiGatewayVerticle extends AbstractVerticle {
 
   @Override
   public void start(Promise<Void> startPromise) {
+
     this.registry = new ServiceRegistry();
     this.client = WebClient.create(vertx, new WebClientOptions()
       .setKeepAlive(true)
@@ -60,6 +65,9 @@ public class ApiGatewayVerticle extends AbstractVerticle {
 
     Router router = Router.router(vertx);
     router.route().handler(BodyHandler.create());
+
+    // Metrics endpoint
+    router.route("/metrics").handler(PrometheusScrapingHandler.create());
 
     // Admin API routes
     router.post("/admin/services").handler(adminHandler::handleAddService);
@@ -177,6 +185,9 @@ public class ApiGatewayVerticle extends AbstractVerticle {
   private void proxyHandler(RoutingContext ctx) {
     ServiceDefinition sd = ctx.get("service");
     if (sd == null) { ctx.next(); return; }
+
+    // Store start time in context for logging
+    ctx.put("startTime", System.nanoTime());
     String incomingPath = ctx.request().path();
     String pathToUpstream;
     if (sd.isStripPrefix()) {

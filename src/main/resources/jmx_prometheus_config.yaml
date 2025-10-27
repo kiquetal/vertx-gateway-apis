@@ -1,0 +1,56 @@
+---
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+whitelistObjectNames:
+  - java.lang:type=*
+  - java.lang:type=GarbageCollector,*
+  - java.lang:type=Memory
+  - java.lang:type=MemoryPool,*
+  - java.lang:type=OperatingSystem
+  - java.lang:type=Runtime
+  - java.lang:type=Threading
+  - java.nio:type=BufferPool,*
+  - io.vertx:*
+
+rules:
+  # Vertx metrics
+  - pattern: 'io.vertx<type=metrics, name=(.*)><>Value'
+    name: vertx_$1
+
+  # Memory pools
+  - pattern: 'java.lang<type=MemoryPool, name=(.*)><>Usage.(.+):'
+    name: jvm_memory_pool_$2_bytes
+    labels:
+      pool: $1
+
+  # GC metrics
+  - pattern: 'java.lang<type=GarbageCollector, name=(.*)><>CollectionCount'
+    name: jvm_gc_collection_count
+    labels:
+      gc: $1
+
+  - pattern: 'java.lang<type=GarbageCollector, name=(.*)><>CollectionTime'
+    name: jvm_gc_collection_time_seconds
+    labels:
+      gc: $1
+
+  # Thread metrics
+  - pattern: 'java.lang<type=Threading><>(.+):'
+    name: jvm_threads_$1
+
+  # Memory metrics
+  - pattern: 'java.lang<type=Memory><>HeapMemoryUsage.(.+):'
+    name: jvm_memory_heap_$1_bytes
+
+  - pattern: 'java.lang<type=Memory><>NonHeapMemoryUsage.(.+):'
+    name: jvm_memory_nonheap_$1_bytes
+
+  # OS metrics
+  - pattern: 'java.lang<type=OperatingSystem><>(.+):'
+    name: system_$1
+
+  # Buffer pool metrics
+  - pattern: 'java.nio<type=BufferPool, name=(.*)><>(.+):'
+    name: jvm_buffer_pool_$2
+    labels:
+      pool: $1

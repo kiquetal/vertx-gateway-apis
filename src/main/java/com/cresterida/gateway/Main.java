@@ -2,6 +2,8 @@ package com.cresterida.gateway;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
+import io.vertx.micrometer.MicrometerMetricsOptions;
+import io.vertx.micrometer.VertxPrometheusOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.concurrent.CountDownLatch;
@@ -14,7 +16,18 @@ public class Main {
         String currentLevel = System.getenv("LOG_LEVEL");
         logger.info("Current LOG_LEVEL is: {}", (currentLevel != null ? currentLevel : "INFO (default)"));
 
-        Vertx vertx = Vertx.vertx(new VertxOptions());
+        // Configure Micrometer with Prometheus
+        MicrometerMetricsOptions metricsOptions = new MicrometerMetricsOptions()
+            .setEnabled(true)
+            .setPrometheusOptions(new VertxPrometheusOptions()
+                .setEnabled(true)
+                .setStartEmbeddedServer(false)
+                .setPublishQuantiles(true));
+
+        // Create Vertx with metrics enabled
+        Vertx vertx = Vertx.vertx(new VertxOptions()
+            .setMetricsOptions(metricsOptions));
+
         // Simple shutdown hook that just closes vertx
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             logger.info("Shutting down application...");
