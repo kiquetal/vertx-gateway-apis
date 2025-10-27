@@ -18,16 +18,25 @@ public final class LoggingUtil {
      */
     public static void logWithConfiguredLevel(Logger logger, String message) {
         if (logger == null) return;
-        String level = System.getenv("LOG_LEVEL");
-        if (level == null || level.isBlank()) {
-            level = System.getProperty("LOG_LEVEL", "INFO");
+
+        String logLevel = System.getenv("LOG_LEVEL");
+        if (logLevel == null || logLevel.trim().isEmpty()) {
+            logLevel = System.getProperty("LOG_LEVEL");
         }
-        switch (level.toUpperCase(Locale.ROOT)) {
+        if (logLevel == null || logLevel.trim().isEmpty()) {
+            logLevel = "INFO";
+        }
+
+        // Simply use the appropriate log level through SLF4J
+        switch (logLevel.toUpperCase(Locale.ROOT)) {
             case "TRACE":
-                if (logger.isTraceEnabled()) logger.trace(message);
+                logger.trace(message);
                 break;
             case "DEBUG":
-                if (logger.isDebugEnabled()) logger.debug(message);
+                logger.debug(message);
+                break;
+            case "INFO":
+                logger.info(message);
                 break;
             case "WARN":
                 logger.warn(message);
@@ -35,8 +44,8 @@ public final class LoggingUtil {
             case "ERROR":
                 logger.error(message);
                 break;
-            case "INFO":
             default:
+                // Default to INFO if level is not recognized
                 logger.info(message);
                 break;
         }

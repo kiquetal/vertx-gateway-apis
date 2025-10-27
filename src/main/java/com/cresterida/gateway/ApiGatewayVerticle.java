@@ -23,7 +23,6 @@ import io.vertx.ext.web.client.HttpRequest;
 import io.vertx.ext.web.client.HttpResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.cresterida.gateway.util.LoggingUtil;
 
 import java.net.URI;
 import java.util.*;
@@ -50,7 +49,7 @@ public class ApiGatewayVerticle extends AbstractVerticle {
     DeploymentOptions options = new DeploymentOptions()
             .setThreadingModel(ThreadingModel.WORKER);
     vertx.deployVerticle(new VehicleWorker(), options)
-      .onSuccess(id -> LoggingUtil.logWithConfiguredLevel(LOGGER, "VehicleWorker deployed with id: " + id))
+      .onSuccess(id -> LOGGER.info("VehicleWorker deployed with id: {}", id))
       .onFailure(err -> {
         System.err.println("Failed to deploy VehicleWorker: " + err.getMessage());
         startPromise.fail(err);
@@ -99,7 +98,7 @@ public class ApiGatewayVerticle extends AbstractVerticle {
     server.requestHandler(router)
       .listen(port)
       .onSuccess(s -> {
-        System.out.println("HTTP server started on port " + port);
+        LOGGER.info("HTTP server started on port {}", port);
         startPromise.complete();
       })
       .onFailure(startPromise::fail);
