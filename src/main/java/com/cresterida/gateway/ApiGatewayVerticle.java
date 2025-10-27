@@ -70,14 +70,19 @@ public class ApiGatewayVerticle extends AbstractVerticle {
         fail(ctx, 400, "Invalid vehicle data");
         return;
       }
-      // Send to VehicleWorker through event bus
-      vertx.eventBus().<JsonObject>request("vehicle.process", vehicle)
-        .onSuccess(reply -> {
-          ctx.response()
-            .putHeader("Content-Type", "application/json")
-            .end(reply.body().encode());
-        })
-        .onFailure(err -> fail(ctx, 500, "Vehicle processing failed: " + err.getMessage()));
+      
+      // Respond immediately with acceptance
+      JsonObject immediateResponse = new JsonObject()
+          .put("message", "Vehicle processing started")
+          .put("id", vehicle.getString("id"))
+          .put("status", "ACCEPTED");
+
+      // Send to VehicleWorker through event bus (fire and forget)
+      vertx.eventBus().send("vehicle.process", vehicle);
+
+      ctx.response()
+          .putHeader("Content-Type", "application/json")
+          .end(immediateResponse.encode());
     });
 
     // Gateway catch-all
