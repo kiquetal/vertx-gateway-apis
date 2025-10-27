@@ -13,6 +13,12 @@
     <maven.compiler.release>21</maven.compiler.release>
     <vertx.version>5.0.4</vertx.version>
     <main.verticle>com.cresterida.gateway.ApiGatewayVerticle</main.verticle>
+      <launcher.class>io.vertx.launcher.application.VertxApplication</launcher.class>
+      <maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
+      <exec-maven-plugin.version>3.0.0</exec-maven-plugin.version>
+
+      <maven-shade-plugin.version>3.2.4</maven-shade-plugin.version>
+      <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
     <vertx-maven-plugin.version>1.0.28</vertx-maven-plugin.version>
   </properties>
 
@@ -28,6 +34,10 @@
         </dependencies>
     </dependencyManagement>
   <dependencies>
+      <dependency>
+          <groupId>io.vertx</groupId>
+          <artifactId>vertx-launcher-application</artifactId>
+      </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-core</artifactId>
@@ -53,47 +63,56 @@
       <scope>runtime</scope>
     </dependency>
   </dependencies>
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>io.reactiverse</groupId>
-        <artifactId>vertx-maven-plugin</artifactId>
-        <version>${vertx-maven-plugin.version}</version>
-        <executions>
-          <execution>
-            <id>vmp</id>
-            <goals>
-              <goal>initialize</goal>
-              <goal>package</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <redeploy>true</redeploy>
-          <verticle>${main.verticle}</verticle>
-          <jvmArgs>-Dvertx.logger-delegate-factory-class-name=io.vertx.core.logging.SLF4JLogDelegateFactory</jvmArgs>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-shade-plugin</artifactId>
-        <version>3.6.0</version>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>shade</goal>
-            </goals>
-            <configuration>
-              <transformers>
-                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                  <mainClass>com.cresterida.gateway.Main</mainClass>
-                </transformer>
-              </transformers>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-    </plugins>
-  </build>
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven-compiler-plugin.version}</version>
+                <configuration>
+                    <release>17</release>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>${maven-shade-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <transformers>
+                                <transformer
+                                        implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <manifestEntries>
+                                        <Main-Class>${launcher.class}</Main-Class>
+                                        <Main-Verticle>${main.verticle}</Main-Verticle>
+                                    </manifestEntries>
+                                </transformer>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
+                            <outputFile>${project.build.directory}/${project.artifactId}-${project.version}-fat.jar
+                            </outputFile>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven-surefire-plugin.version}</version>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>${exec-maven-plugin.version}</version>
+                <configuration>
+                    <mainClass>${launcher.class}</mainClass>
+                    <arguments>
+                        <argument>${main.verticle}</argument>
+                    </arguments>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>
