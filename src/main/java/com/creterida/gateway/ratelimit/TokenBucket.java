@@ -1,4 +1,4 @@
-package com.cresterida.gateway.ratelimit;
+package com.creterida.gateway.ratelimit;
 
 import java.util.concurrent.atomic.AtomicLong;
 

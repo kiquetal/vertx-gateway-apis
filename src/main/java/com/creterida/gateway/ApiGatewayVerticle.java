@@ -1,9 +1,9 @@
-package com.cresterida.gateway;
+package com.creterida.gateway;
 
-import com.cresterida.gateway.handlers.AdminServiceHandler;
-import com.cresterida.gateway.model.ServiceDefinition;
-import com.cresterida.gateway.ratelimit.TokenBucket;
-import com.cresterida.gateway.registry.ServiceRegistry;
+import com.creterida.gateway.model.ServiceDefinition;
+import com.creterida.gateway.ratelimit.TokenBucket;
+import com.creterida.gateway.registry.ServiceRegistry;
+import com.creterida.gateway.handlers.AdminServiceHandler;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;

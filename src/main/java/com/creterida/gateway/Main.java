@@ -1,7 +1,8 @@
-package com.cresterida.gateway;
+package com.creterida.gateway;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
+import com.creterida.gateway.ApiGatewayVerticle;
 
 public class Main {
   public static void main(String[] args) {
