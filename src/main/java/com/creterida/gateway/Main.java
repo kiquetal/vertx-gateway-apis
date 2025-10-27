@@ -1,4 +1,4 @@
-package com.example.gateway;
+package com.cresterida.gateway;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;

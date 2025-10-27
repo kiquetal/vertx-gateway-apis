@@ -1,4 +1,4 @@
-package com.example.gateway.registry;
+package com.cresterida.gateway.registry;
 
 import com.example.gateway.model.ServiceDefinition;
 

@@ -125,3 +125,50 @@ For the service discovery mechanism, we are considering the following technologi
 | **Redis** | - In-memory, resulting in very fast lookups.<br>- Simple key-value model is a natural fit for service discovery.<br>- Built-in support for Time-To-Live (TTL) on keys, allowing for automatic expiration of services that fail to send a heartbeat. | - By default, it's not persistent. While persistence can be configured, it adds complexity.<br>- Introduces another dependency to the project. |
 | **SQLite** | - Embedded, no separate server process required.<br>- Simple, file-based, and provides transactional guarantees. | - Can become a bottleneck in highly concurrent environments due to file-level locking.<br>- Not ideal for distributed systems where multiple gateway instances might need to access the same service registry. |
 | **SQL Database** | - Robust and provides strong transactional guarantees.<br>- Well-understood technology with a rich feature set. | - Can be overkill for a simple service discovery mechanism.<br>- Requires a separate database server, adding operational complexity. |
+
+
+## Start the project with Maven
+
+You can run the gateway directly with Maven using the Exec plugin (no manual packaging required), or build a fat JAR and run it with `java -jar`.
+
+- Run directly (recommended for development):
+
+```
+mvn exec:java -Dexec.mainClass=com.example.gateway.Main
+```
+
+- Change the HTTP port (two options):
+
+```
+# JVM system property
+mvn -Dhttp.port=9090 exec:java
+
+# Environment variable
+# Linux / macOS
+PORT=9090 mvn exec:java
+# Windows PowerShell
+$env:PORT=9090; mvn exec:java
+# Windows CMD
+set PORT=9090 && mvn exec:java
+```
+
+- Clean build then run in one go:
+
+```
+mvn clean compile exec:java -Dexec.mainClass=com.example.gateway.Main
+```
+
+- Build a fat JAR and run (good for staging/production tests):
+
+```
+# Build shaded (fat) JAR
+mvn -DskipTests package
+
+# Run the shaded JAR (version may change; adjust the filename if needed)
+java -jar target/vertx-gateway-apis-0.1.0-SNAPSHOT-shaded.jar
+
+# Override port when running the JAR
+java -Dhttp.port=9090 -jar target/vertx-gateway-apis-0.1.0-SNAPSHOT-shaded.jar
+```
+
+To stop the gateway in the foreground, press Ctrl+C.

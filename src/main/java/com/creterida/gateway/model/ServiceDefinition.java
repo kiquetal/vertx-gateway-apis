@@ -1,4 +1,4 @@
-package com.example.gateway.model;
+package com.cresterida.gateway.model;
 
 import io.vertx.core.json.JsonObject;
 

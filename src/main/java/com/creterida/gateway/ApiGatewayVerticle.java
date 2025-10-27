@@ -1,4 +1,4 @@
-package com.example.gateway;
+package com.createrida.gateway;
 
 import com.example.gateway.model.ServiceDefinition;
 import com.example.gateway.ratelimit.TokenBucket;
