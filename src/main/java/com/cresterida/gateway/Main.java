@@ -20,9 +20,8 @@ public class Main {
         MicrometerMetricsOptions metricsOptions = new MicrometerMetricsOptions()
             .setEnabled(true)
             .setPrometheusOptions(new VertxPrometheusOptions()
-                .setEnabled(true)
-                .setStartEmbeddedServer(false)
-                .setPublishQuantiles(true));
+                .setEnabled(true));
+
 
         // Create Vertx with metrics enabled
         Vertx vertx = Vertx.vertx(new VertxOptions()
