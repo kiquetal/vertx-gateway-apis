@@ -2,7 +2,10 @@
 
 An API gateway built using [Vert.x](https://vertx.io/).
 
-This project aims to provide a simple, yet powerful and flexible API gateway. The first step is to implement a service discovery mechanism, so services can be added dynamically.
+This project provides a minimal, high‑performance API Gateway starter focused on:
+- Dynamic service registration via REST (no hardcoded services)
+- Per‑service rate limiting as the first handler in the request chain
+- Simple reverse proxying to upstream services
 
 ## Flow
 
@@ -14,10 +17,104 @@ This project aims to provide a simple, yet powerful and flexible API gateway. Th
 
 ## Features
 
-*   **Rate Limit:** All services will have a rate limit out of the box. This protects services from being overwhelmed with requests.
-*   **Authentication:** Services can opt to have authentication or not.
-*   **Service Registration:** Allows services to be dynamically discovered and managed.
-*   **Request Inspection:** Allows for inspection of incoming requests before forwarding them to the target service.
+- Rate limit: Each service has its own token‑bucket rate limiter (burst + refill per second). First handler in the pipeline.
+- Dynamic registry: Add/update/remove services at runtime through the admin REST API.
+- Path routing: Longest‑prefix match on `pathPrefix`.
+- Proxy: Forwards method, headers (minus hop‑by‑hop), query and body to the upstream base URL.
+
+## Quick start
+
+Requirements: JDK 17+, Maven 3.9+
+
+Run the gateway:
+
+```
+mvn -q exec:java -Dexec.mainClass=com.example.gateway.Main
+```
+
+- Default HTTP port: `8080`
+- Configure port via env `PORT` or JVM `-Dhttp.port=9090`
+
+### Admin API (dynamic services)
+Base path: `/admin/services`
+
+- Create service
+
+```
+curl -sS -X POST http://localhost:8080/admin/services \
+  -H 'content-type: application/json' \
+  -d '{
+    "name": "users",
+    "pathPrefix": "/users",
+    "upstreamBaseUrl": "http://localhost:9001",
+    "rateLimitPerSecond": 20,
+    "burstCapacity": 40,
+    "stripPrefix": true
+  }'
+```
+
+- List services
+
+```
+curl -sS http://localhost:8080/admin/services | jq
+```
+
+- Get one
+
+```
+curl -sS http://localhost:8080/admin/services/{id}
+```
+
+- Update
+
+```
+curl -sS -X PUT http://localhost:8080/admin/services/{id} \
+  -H 'content-type: application/json' \
+  -d '{
+    "name": "users-v2",
+    "pathPrefix": "/users",
+    "upstreamBaseUrl": "http://localhost:9002",
+    "rateLimitPerSecond": 50,
+    "burstCapacity": 100,
+    "stripPrefix": true
+  }'
+```
+
+- Delete
+
+```
+curl -sS -X DELETE http://localhost:8080/admin/services/{id} -i
+```
+
+### How routing works
+- Requests are matched by the longest `pathPrefix` registered.
+- If `stripPrefix=true`, the matched prefix is removed before forwarding to the upstream path.
+- The first handler is a per‑service rate limiter. When exceeded, the gateway returns `429` with JSON body.
+
+### Example
+1) Register `orders` service:
+```
+curl -sS -X POST http://localhost:8080/admin/services \
+  -H 'content-type: application/json' \
+  -d '{
+    "name": "orders",
+    "pathPrefix": "/orders",
+    "upstreamBaseUrl": "http://localhost:7000",
+    "rateLimitPerSecond": 5,
+    "burstCapacity": 10,
+    "stripPrefix": true
+  }'
+```
+2) Call the service through the gateway:
+```
+curl -sS http://localhost:8080/orders/123
+```
+If more than the allowed rate hits the `/orders` routes, responses will be `429`.
+
+## Notes / Roadmap
+- Persistence for the registry (e.g., Redis) can be plugged later; current registry is in‑memory.
+- Authentication and request inspection hooks can be added as optional handlers before/after rate limiting.
+- Horizontal scaling will require external shared state for registration and possibly distributed rate limiting.
 
 ## Service Discovery Candidates
 
