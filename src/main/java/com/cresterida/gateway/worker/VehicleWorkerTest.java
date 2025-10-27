@@ -11,7 +11,8 @@ public class VehicleWorkerTest {
         Vertx vertx = Vertx.vertx();
         CountDownLatch latch = new CountDownLatch(5); // Process 5 vehicles
         // Deploy the VehicleWorker verticle
-        vertx.deployVerticle(new VehicleWorker(), ar -> {
+        vertx.deployVerticle(new VehicleWorker())
+                .onComplete(ar -> {
             if (ar.succeeded()) {
                 LOGGER.info("VehicleWorker deployed successfully");
                 // Process multiple vehicles concurrently
@@ -21,13 +22,14 @@ public class VehicleWorkerTest {
                         .put("make", "Toyota")
                         .put("model", "Camry")
                         .put("year", 2025);
-                    vertx.eventBus().<JsonObject>request("vehicle.process", vehicle, reply -> {
-                        if (reply.succeeded()) {
-                            JsonObject processedVehicle = reply.result().body();
+                    vertx.eventBus().<JsonObject>request("vehicle.process", vehicle)
+                            .onSuccess(reply -> {
+                            JsonObject processedVehicle = reply.body();
                             LOGGER.info("Vehicle processed: {}", processedVehicle.encode());
-                        } else {
-                            LOGGER.error("Processing failed: {}", reply.cause().getMessage());
-                        }
+                                latch.countDown();
+                          })
+                            .onFailure(err -> {
+                        LOGGER.error("Failed to send vehicle for processing: {}", err.getMessage());
                         latch.countDown();
                     });
                 }

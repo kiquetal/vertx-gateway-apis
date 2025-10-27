@@ -8,6 +8,7 @@ import io.vertx.core.DeploymentOptions;
 import com.cresterida.gateway.handlers.AdminServiceHandler;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
+import io.vertx.core.ThreadingModel;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
@@ -37,14 +38,13 @@ public class ApiGatewayVerticle extends AbstractVerticle {
     this.client = WebClient.create(vertx, new WebClientOptions()
       .setKeepAlive(true)
       .setTcpKeepAlive(true)
-      .setTryUseCompression(true)
-      .setMaxPoolSize(1024)
       .setHttp2KeepAliveTimeout(30)
       .setPipeliningLimit(64)
     );
 
     // Deploy VehicleWorker with virtual threads
-    DeploymentOptions options = new DeploymentOptions().setWorker(true).setWorkerPoolName("vehicle-worker-pool");
+    DeploymentOptions options = new DeploymentOptions()
+            .setThreadingModel(ThreadingModel.WORKER);
     vertx.deployVerticle(new VehicleWorker(), options)
       .onSuccess(id -> System.out.println("VehicleWorker deployed successfully: " + id))
       .onFailure(err -> {
@@ -65,7 +65,7 @@ public class ApiGatewayVerticle extends AbstractVerticle {
     router.delete("/admin/services/:id").handler(adminHandler::handleDeleteService);
     // Test route for VehicleWorker
     router.post("/test/vehicle").handler(ctx -> {
-      JsonObject vehicle = ctx.getBodyAsJson();
+      JsonObject vehicle = ctx.body().asJsonObject();
       if (vehicle == null) {
         fail(ctx, 400, "Invalid vehicle data");
         return;
