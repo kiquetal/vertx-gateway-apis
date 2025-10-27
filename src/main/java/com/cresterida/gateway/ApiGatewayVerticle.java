@@ -3,6 +3,8 @@ package com.cresterida.gateway;
 import com.cresterida.gateway.model.ServiceDefinition;
 import com.cresterida.gateway.ratelimit.TokenBucket;
 import com.cresterida.gateway.registry.ServiceRegistry;
+import com.cresterida.gateway.worker.VehicleWorker;
+import io.vertx.core.DeploymentOptions;
 import com.cresterida.gateway.handlers.AdminServiceHandler;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
@@ -41,6 +43,15 @@ public class ApiGatewayVerticle extends AbstractVerticle {
       .setPipeliningLimit(64)
     );
 
+    // Deploy VehicleWorker with virtual threads
+    DeploymentOptions options = new DeploymentOptions().setWorker(true).setWorkerPoolName("vehicle-worker-pool");
+    vertx.deployVerticle(new VehicleWorker(), options)
+      .onSuccess(id -> System.out.println("VehicleWorker deployed successfully: " + id))
+      .onFailure(err -> {
+        System.err.println("Failed to deploy VehicleWorker: " + err.getMessage());
+        startPromise.fail(err);
+      });
+
     this.adminHandler = new AdminServiceHandler(registry, limiters);
 
     Router router = Router.router(vertx);
@@ -52,6 +63,22 @@ public class ApiGatewayVerticle extends AbstractVerticle {
     router.get("/admin/services/:id").handler(adminHandler::handleGetService);
     router.put("/admin/services/:id").handler(adminHandler::handleUpdateService);
     router.delete("/admin/services/:id").handler(adminHandler::handleDeleteService);
+    // Test route for VehicleWorker
+    router.post("/test/vehicle").handler(ctx -> {
+      JsonObject vehicle = ctx.getBodyAsJson();
+      if (vehicle == null) {
+        fail(ctx, 400, "Invalid vehicle data");
+        return;
+      }
+      // Send to VehicleWorker through event bus
+      vertx.eventBus().<JsonObject>request("vehicle.process", vehicle)
+        .onSuccess(reply -> {
+          ctx.response()
+            .putHeader("Content-Type", "application/json")
+            .end(reply.body().encode());
+        })
+        .onFailure(err -> fail(ctx, 500, "Vehicle processing failed: " + err.getMessage()));
+    });
 
     // Gateway catch-all
     router.route().handler(this::resolveServiceHandler);
