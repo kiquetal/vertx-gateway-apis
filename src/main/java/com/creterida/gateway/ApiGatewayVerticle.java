@@ -1,8 +1,8 @@
-package com.createrida.gateway;
+package com.cresterida.gateway;
 
-import com.example.gateway.model.ServiceDefinition;
-import com.example.gateway.ratelimit.TokenBucket;
-import com.example.gateway.registry.ServiceRegistry;
+import com.cresterida.gateway.model.ServiceDefinition;
+import com.cresterida.gateway.ratelimit.TokenBucket;
+import com.cresterida.gateway.registry.ServiceRegistry;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
