@@ -32,6 +32,7 @@ public class ApiGatewayVerticle extends AbstractVerticle {
     private static final Logger LOGGER = LoggerFactory.getLogger(ApiGatewayVerticle.class);
     private ServiceRegistry registry;
     private WebClient client;
+    private HttpServer httpServer;
     private final Map<String, TokenBucket> limiters = new ConcurrentHashMap<>();
     private AdminServiceHandler adminHandler;
 
@@ -94,14 +95,48 @@ public class ApiGatewayVerticle extends AbstractVerticle {
     router.route().handler(this::proxyHandler);
 
     int port = getPort();
-    HttpServer server = vertx.createHttpServer();
-    server.requestHandler(router)
+    this.httpServer = vertx.createHttpServer();
+    this.httpServer.requestHandler(router)
       .listen(port)
       .onSuccess(s -> {
+        this.httpServer = s;
         LOGGER.info("HTTP server started on port {}", port);
         startPromise.complete();
       })
       .onFailure(startPromise::fail);
+  }
+
+  @Override
+  public void stop(Promise<Void> stopPromise) {
+    LOGGER.info("ApiGatewayVerticle stopping: initiating graceful shutdown...");
+    // Close HTTP server first to stop accepting new requests
+    if (httpServer != null) {
+      httpServer.close().onComplete(ar -> {
+        if (ar.succeeded()) {
+          LOGGER.info("HTTP server closed.");
+        } else {
+          LOGGER.warn("HTTP server close error: {}", ar.cause() != null ? ar.cause().getMessage() : "unknown");
+        }
+        // Close WebClient resources
+        if (client != null) {
+          try {
+            client.close();
+          } catch (Exception e) {
+            LOGGER.debug("WebClient close exception: {}", e.getMessage());
+          }
+        }
+        stopPromise.complete();
+      });
+    } else {
+      if (client != null) {
+        try {
+          client.close();
+        } catch (Exception e) {
+          LOGGER.debug("WebClient close exception: {}", e.getMessage());
+        }
+      }
+      stopPromise.complete();
+    }
   }
 
 
