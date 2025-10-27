@@ -2,7 +2,7 @@
 
 # Build the Docker image locally
 echo "Building Docker image..."
-docker build -t vertx-gateway-local -f src/main/docker/Dockerfile .
+docker build -t vertx-gateway-local-jmx -f src/main/docker/Dockerfile .
 
 # Run the container
 echo "Starting container..."

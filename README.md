@@ -87,3 +87,24 @@ docker-compose up -d
 ```
 
 Access Grafana at http://localhost:3000 (default credentials: admin/admin)
+
+## Local Development
+
+### Running with JMX Monitoring
+
+To run the application locally with JMX monitoring enabled, use the following Maven command:
+
+```bash
+JAVA_OPTS="-javaagent:monitoring/jmx/jmx_prometheus_javaagent.jar=8081:monitoring/config/jmx_prometheus_config.yaml" mvn exec:java
+```
+
+This command will:
+- Start the application using Maven
+- Enable JMX monitoring on port 8081
+- Use the JMX Prometheus configuration from monitoring/config/jmx_prometheus_config.yaml
+- Expose metrics endpoint at http://localhost:8081/metrics
+
+You can then access:
+- The API Gateway at http://localhost:8080
+- Metrics endpoint at http://localhost:8081/metrics
+- JMX monitoring through JConsole or similar tools
