@@ -7,9 +7,10 @@ services:
       - "8080:8080"  # Application port
       - "8081:8081"  # JMX Exporter metrics
     environment:
-      - JAVA_OPTS=-javaagent:/app/jmx_prometheus_javaagent.jar=8081:/app/jmx_prometheus_config.yaml
+      - LOG_LEVEL=INFO
+      - JAVA_OPTS=-javaagent:/app/jmx_prometheus_javaagent.jar=8081:/app/config/jmx_prometheus_config.yaml
     volumes:
-      - ./monitoring/jmx:/app/monitoring
+      - ./monitoring/config:/app/config
     networks:
       - monitoring
 
@@ -41,8 +42,6 @@ services:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
-    depends_on:
-      - prometheus
     networks:
       - monitoring
 

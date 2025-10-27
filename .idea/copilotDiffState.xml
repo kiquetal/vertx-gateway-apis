@@ -11,6 +11,22 @@
             </PendingDiffInfo>
           </value>
         </entry>
+        <entry key="$PROJECT_DIR$/docker-compose.yml">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/docker-compose.yml" />
+              <option name="updatedContent" value="version: '3.8'&#10;&#10;services:&#10;  api-gateway:&#10;    image: ghcr.io/kiquetal/vertx-gateway-apis:latest&#10;    ports:&#10;      - &quot;8080:8080&quot;  # Application port&#10;      - &quot;8081:8081&quot;  # JMX Exporter metrics&#10;    environment:&#10;      - LOG_LEVEL=INFO&#10;      - JAVA_OPTS=-javaagent:/app/jmx_prometheus_javaagent.jar=8081:/app/config/jmx_prometheus_config.yaml&#10;    volumes:&#10;      - ./monitoring/config:/app/config&#10;    networks:&#10;      - monitoring&#10;&#10;  prometheus:&#10;    image: prom/prometheus:latest&#10;    ports:&#10;      - &quot;9090:9090&quot;&#10;    volumes:&#10;      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml&#10;      - prometheus_data:/prometheus&#10;    command:&#10;      - '--config.file=/etc/prometheus/prometheus.yml'&#10;      - '--storage.tsdb.path=/prometheus'&#10;      - '--web.console.libraries=/etc/prometheus/console_libraries'&#10;      - '--web.console.templates=/etc/prometheus/consoles'&#10;      - '--web.enable-lifecycle'&#10;    networks:&#10;      - monitoring&#10;&#10;  grafana:&#10;    image: grafana/grafana:latest&#10;    ports:&#10;      - &quot;3000:3000&quot;&#10;    environment:&#10;      - GF_SECURITY_ADMIN_USER=admin&#10;      - GF_SECURITY_ADMIN_PASSWORD=admin&#10;      - GF_USERS_ALLOW_SIGN_UP=false&#10;    volumes:&#10;      - grafana_data:/var/lib/grafana&#10;      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning&#10;      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards&#10;    networks:&#10;      - monitoring&#10;&#10;networks:&#10;  monitoring:&#10;    driver: bridge&#10;&#10;volumes:&#10;  prometheus_data:&#10;  grafana_data:" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/monitoring/config/jmx_prometheus_config.yaml">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/monitoring/config/jmx_prometheus_config.yaml" />
+              <option name="updatedContent" value="---&#10;lowercaseOutputName: true&#10;lowercaseOutputLabelNames: true&#10;rules:&#10;  # Vert.x specific metrics&#10;  - pattern: &quot;vertx&lt;[^&gt;]+&gt;&lt;([^&gt;]+)&gt;&quot;&#10;    name: vertx_$1&#10;    &#10;  # HTTP server metrics&#10;  - pattern: &quot;vertx.http.server.*&quot;&#10;    name: vertx_http_server_$1&#10;    &#10;  # Event bus metrics&#10;  - pattern: &quot;vertx.eventbus.*&quot;&#10;    name: vertx_eventbus_$1&#10;    &#10;  # JVM memory pools&#10;  - pattern: 'java.lang&lt;type=MemoryPool, name=(.*)&gt;&lt;&gt;Usage.(.+):'&#10;    name: jvm_memory_pool_$2_bytes&#10;    labels:&#10;      pool: $1&#10;      &#10;  # GC metrics&#10;  - pattern: 'java.lang&lt;type=GarbageCollector, name=(.*)&gt;&lt;&gt;CollectionCount'&#10;    name: jvm_gc_collection_count&#10;    labels:&#10;      gc: $1&#10;      &#10;  - pattern: 'java.lang&lt;type=GarbageCollector, name=(.*)&gt;&lt;&gt;CollectionTime'&#10;    name: jvm_gc_collection_time_seconds&#10;    labels:&#10;      gc: $1&#10;      &#10;  # Thread metrics&#10;  - pattern: 'java.lang&lt;type=Threading&gt;&lt;&gt;(.+):'&#10;    name: jvm_threads_$1&#10;    &#10;  # Memory metrics&#10;  - pattern: 'java.lang&lt;type=Memory&gt;&lt;&gt;HeapMemoryUsage.(.+):'&#10;    name: jvm_memory_heap_$1_bytes&#10;    &#10;  - pattern: 'java.lang&lt;type=Memory&gt;&lt;&gt;NonHeapMemoryUsage.(.+):'&#10;    name: jvm_memory_nonheap_$1_bytes&#10;    &#10;  # OS metrics&#10;  - pattern: 'java.lang&lt;type=OperatingSystem&gt;&lt;&gt;(.+):'&#10;    name: system_$1" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
         <entry key="$PROJECT_DIR$/src/main/docker/.dockerignore">
           <value>
             <PendingDiffInfo>
