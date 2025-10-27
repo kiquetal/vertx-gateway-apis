@@ -95,3 +95,22 @@ curl -sS -X POST http://localhost:8080/admin/services \
   }'
 ```
 2) The gateway will now proxy requests to `/orders/**` to `http://localhost:9002/**` after stripping the `/orders` prefix.
+### Asynchronous Vehicle Processing
+The gateway includes an asynchronous vehicle processing worker implemented using Vert.x event bus:
+- Uses Vert.x event bus for non-blocking message processing
+- Processes vehicle data asynchronously using Vert.x timers
+- Handles vehicle information including make, model, year, and processing status
+- Provides processing time tracking for each vehicle request
+- Implements error handling with proper status updates
+Example vehicle processing request:
+```bash
+curl -X POST http://localhost:8080/vehicles/process \
+  -H "content-type: application/json" \
+  -d '{
+    "id": "v123",
+    "make": "Toyota",
+    "model": "Camry",
+    "year": 2025
+  }'
+```
+The worker processes each vehicle request asynchronously and returns a response with status and processing time information.
