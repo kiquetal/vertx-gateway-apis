@@ -10,7 +10,9 @@ import io.vertx.micrometer.MicrometerMetricsOptions;
 import io.vertx.micrometer.VertxPrometheusOptions;
 import io.vertx.micrometer.backends.BackendRegistries;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class Main {
     private static final Logger logger = LogManager.getLogger(Main.class);
@@ -65,40 +67,39 @@ public class Main {
                 });
 
 
-        // Simple shutdown hook that just closes vertx
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            logger.info("Shutting down application...");
-            try {
-                CountDownLatch latch = new CountDownLatch(1);
-
-                vertx.close()
-                        .onComplete( ar -> {
-                            if (ar.succeeded()) {
-                                logger.info("Vert.x closed successfully");
-                            } else {
-                                logger.error("Error during Vert.x shutdown: {}", ar.cause().getMessage());
-                            }
-                            latch.countDown();
-                }).onFailure( err -> {;
-                    logger.error("Vert.x close failed: {}", err.getMessage());
-                    latch.countDown();
-                });
-
-                // Wait for shutdown with timeout
-                if (latch.await(5, TimeUnit.SECONDS)) {
-                    logger.info("Shutdown completed successfully");
-                } else {
-                    logger.warn("Shutdown timed out after 30 seconds");
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                logger.warn("Shutdown interrupted");
-            }
-            logger.info("Shutdown complete");
-        }));
+            setupShutdownHook(vertx);
         printLogDetails();
 
     }
+    private static void setupShutdownHook(Vertx vertx) {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("Initiating shutdown sequence...");
+
+            try {
+                // First close Vert.x and wait synchronously
+                vertx.close()
+                        .toCompletionStage()
+                        .toCompletableFuture()
+                        .get(30, TimeUnit.SECONDS);
+
+                System.out.println("Vert.x shutdown completed");
+
+                // Ensure all loggers are flushed and closed
+                LogManager.shutdown(true);
+
+                System.out.println("Shutdown completed");
+
+            } catch (Exception e) {
+                System.err.println("Error during shutdown: " + e.getMessage());
+                System.exit(1);
+            }
+        }));
+    }
+
+
+
+
+
 
     static private void printLogDetails() {
 
@@ -106,4 +107,6 @@ public class Main {
         logger.info("Logger Level: " + logger.getLevel());
         logger.info("Logger Class: " + logger.getClass().getName());
     }
+
+
 }

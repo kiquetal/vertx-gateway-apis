@@ -135,36 +135,37 @@ public class ApiGatewayVerticle extends AbstractVerticle {
 
     @Override
     public void stop(Promise<Void> stopPromise) {
-        LOGGER.info("ApiGatewayVerticle stopping: initiating graceful shutdown...");
+        System.out.println("ApiGatewayVerticle stopping: initiating graceful shutdown...");
 
         // Close WebClient first
         if (client != null) {
             try {
-                LOGGER.info("Closing WebClient...");
+                System.out.println("Closing WebClient...");
                 client.close();
-                LOGGER.info("WebClient closed successfully");
+                System.out.println("WebClient closed successfully");
             } catch (Exception e) {
-                LOGGER.warn("WebClient close exception: {}", e.getMessage());
+                System.err.println("WebClient close exception: " + e.getMessage());
             }
         } else {
-            LOGGER.info("No WebClient to close");
+            System.out.println("No WebClient to close");
         }
 
         // Then close HTTP server
         if (httpServer != null) {
-            LOGGER.info("Closing HTTP server on port {}...", getPort());
+            System.out.println("Closing HTTP server on port " + getPort() + "...");
             httpServer.close()
                     .onComplete(ar -> {
                 if (ar.succeeded()) {
-                    LOGGER.info("HTTP server closed successfully");
+                    System.out.println("HTTP server closed successfully");
                 } else {
-                    LOGGER.warn("HTTP server close error: {}", ar.cause() != null ? ar.cause().getMessage() : "unknown");
+                    System.err.println("HTTP server close error: " +
+                        (ar.cause() != null ? ar.cause().getMessage() : "unknown"));
                 }
-                LOGGER.info("ApiGatewayVerticle shutdown complete - completing stop promise");
+                System.out.println("ApiGatewayVerticle shutdown complete - completing stop promise");
                 stopPromise.complete(); // CRITICAL: This must be called!
             });
         } else {
-            LOGGER.info("ApiGatewayVerticle shutdown complete (no HTTP server was running) - completing stop promise");
+            System.out.println("ApiGatewayVerticle shutdown complete (no HTTP server was running) - completing stop promise");
             stopPromise.complete(); // CRITICAL: This must be called!
         }
     }
