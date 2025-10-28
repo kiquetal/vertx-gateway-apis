@@ -14,6 +14,8 @@ import java.util.concurrent.TimeUnit;
 
 public class Main {
     private static final Logger logger = LogManager.getLogger(Main.class);
+    private static Vertx vertx;
+
     public static void main(String args []) {
         String currentLevel = System.getenv("LOG_LEVEL");
         logger.info(currentLevel);
@@ -30,7 +32,7 @@ public class Main {
         // 5. Create Vertx with the explicit factory. This is the single source of truth.
 
 
-        Vertx vertx = Vertx.builder()
+        vertx = Vertx.builder()
                 .with(new VertxOptions()
                         .setMetricsOptions(metricsOptions))
 
@@ -54,6 +56,13 @@ public class Main {
         } catch (Exception e) {
             logger.info("No current Vert.x context");
         }
+        // Deploy the API Gateway verticle
+        vertx.deployVerticle(new ApiGatewayVerticle())
+                .onSuccess(id -> logger.info("Gateway started successfully"))
+                .onFailure(err -> {
+                    logger.error(err);
+                    System.exit(1);
+                });
 
 
         // Simple shutdown hook that just closes vertx
@@ -61,13 +70,24 @@ public class Main {
             logger.info("Shutting down application...");
             try {
                 CountDownLatch latch = new CountDownLatch(1);
+
                 vertx.close()
-                        .onComplete(ar -> latch.countDown())
-                        .onFailure( err -> logger.error(err.getMessage()));
+                        .onComplete( ar -> {
+                            if (ar.succeeded()) {
+                                logger.info("Vert.x closed successfully");
+                            } else {
+                                logger.error("Error during Vert.x shutdown: {}", ar.cause().getMessage());
+                            }
+                            latch.countDown();
+                }).onFailure( err -> {;
+                    logger.error("Vert.x close failed: {}", err.getMessage());
+                    latch.countDown();
+                });
 
-
-                // Wait for completion with a reasonable timeout
-                if (!latch.await(30, TimeUnit.SECONDS)) {
+                // Wait for shutdown with timeout
+                if (latch.await(5, TimeUnit.SECONDS)) {
+                    logger.info("Shutdown completed successfully");
+                } else {
                     logger.warn("Shutdown timed out after 30 seconds");
                 }
             } catch (InterruptedException e) {
@@ -77,13 +97,6 @@ public class Main {
             logger.info("Shutdown complete");
         }));
         printLogDetails();
-        // Deploy the API Gateway verticle
-        vertx.deployVerticle(new ApiGatewayVerticle())
-                .onSuccess(id -> logger.info("Gateway started successfully"))
-                .onFailure(err -> {
-                    logger.error(err);
-                    System.exit(1);
-                });
 
     }
 

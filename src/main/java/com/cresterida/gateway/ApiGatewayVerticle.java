@@ -115,7 +115,7 @@ public class ApiGatewayVerticle extends AbstractVerticle {
     initializeMetrics();
     LOGGER.info("Initializing metrics and handlers...");
 
-
+    LOGGER.trace("HERE 1");
     router.route().handler(this::resolveServiceHandler);
     router.route().handler(this::rateLimitHandler);
     router.route().handler(this::proxyHandler);
@@ -132,36 +132,42 @@ public class ApiGatewayVerticle extends AbstractVerticle {
       .onFailure(startPromise::fail);
   }
 
-  @Override
-  public void stop(Promise<Void> stopPromise) {
-    LOGGER.info("ApiGatewayVerticle stopping: initiating graceful shutdown...");
 
-    // First close the WebClient to stop new requests
-    if (client != null) {
-      try {
-        client.close();
-        LOGGER.info("WebClient closed successfully");
-      } catch (Exception e) {
-        LOGGER.warn("WebClient close exception: {}", e.getMessage());
-      }
-    }
+    @Override
+    public void stop(Promise<Void> stopPromise) {
+        LOGGER.info("ApiGatewayVerticle stopping: initiating graceful shutdown...");
 
-    // Then close HTTP server to stop accepting new requests
-    if (httpServer != null) {
-      httpServer.close().onComplete(ar -> {
-        if (ar.succeeded()) {
-          LOGGER.info("HTTP server closed successfully");
+        // Close WebClient first
+        if (client != null) {
+            try {
+                LOGGER.info("Closing WebClient...");
+                client.close();
+                LOGGER.info("WebClient closed successfully");
+            } catch (Exception e) {
+                LOGGER.warn("WebClient close exception: {}", e.getMessage());
+            }
         } else {
-          LOGGER.warn("HTTP server close error: {}", ar.cause() != null ? ar.cause().getMessage() : "unknown");
+            LOGGER.info("No WebClient to close");
         }
-        LOGGER.info("ApiGatewayVerticle shutdown complete");
-        stopPromise.complete();
-      });
-    } else {
-      LOGGER.info("ApiGatewayVerticle shutdown complete (no HTTP server was running)");
-      stopPromise.complete();
+
+        // Then close HTTP server
+        if (httpServer != null) {
+            LOGGER.info("Closing HTTP server on port {}...", getPort());
+            httpServer.close()
+                    .onComplete(ar -> {
+                if (ar.succeeded()) {
+                    LOGGER.info("HTTP server closed successfully");
+                } else {
+                    LOGGER.warn("HTTP server close error: {}", ar.cause() != null ? ar.cause().getMessage() : "unknown");
+                }
+                LOGGER.info("ApiGatewayVerticle shutdown complete - completing stop promise");
+                stopPromise.complete(); // CRITICAL: This must be called!
+            });
+        } else {
+            LOGGER.info("ApiGatewayVerticle shutdown complete (no HTTP server was running) - completing stop promise");
+            stopPromise.complete(); // CRITICAL: This must be called!
+        }
     }
-  }
 
 
   private int getPort() {
