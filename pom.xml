@@ -12,14 +12,14 @@
     <maven.compiler.target>21</maven.compiler.target>
     <maven.compiler.release>21</maven.compiler.release>
     <vertx.version>5.0.4</vertx.version>
-    <main.verticle>com.cresterida.gateway.ApiGatewayVerticle</main.verticle>
+    <main.verticle>com.cresterida.gateway.MainVerticle</main.verticle>
       <launcher.class>io.vertx.launcher.application.VertxApplication</launcher.class>
       <maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
       <exec-maven-plugin.version>3.0.0</exec-maven-plugin.version>
 
       <maven-shade-plugin.version>3.2.4</maven-shade-plugin.version>
       <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
-    <vertx-maven-plugin.version>1.0.28</vertx-maven-plugin.version>
+    <vertx-maven-plugin.version>2.0.2</vertx-maven-plugin.version>
   </properties>
 
     <dependencyManagement>
@@ -122,11 +122,30 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>${exec-maven-plugin.version}</version>
                 <configuration>
-                    <mainClass>com.cresterida.gateway.Main</mainClass>
+                    <mainClass>com.cresterida.gateway.MainVerticle</mainClass>
                     <arguments>
                         <argument>${main.verticle}</argument>
                     </arguments>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>io.reactiverse</groupId>
+                <artifactId>vertx-maven-plugin</artifactId>
+                <version>${vertx-maven-plugin.version}</version>
+                <configuration>
+                    <redeploy>true</redeploy>
+                    <verticle>${main.verticle}</verticle>
+                    <launcher>${launcher.class}</launcher>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>vertx-prepackage</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>package</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

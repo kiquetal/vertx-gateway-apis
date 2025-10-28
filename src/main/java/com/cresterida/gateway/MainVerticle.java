@@ -1,41 +1,56 @@
 package com.cresterida.gateway;
 
 import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
-import io.micrometer.prometheusmetrics.PrometheusConfig;
-import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
-import io.vertx.core.http.HttpServerOptions;
-import io.vertx.micrometer.MicrometerMetricsFactory;
+import io.vertx.micrometer.Label;
 import io.vertx.micrometer.MicrometerMetricsOptions;
 import io.vertx.micrometer.VertxPrometheusOptions;
+import io.vertx.micrometer.backends.BackendRegistries;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-public class Main {
-    private static final Logger logger = LoggerFactory.getLogger(Main.class);
-    public static void main(String args []) {
+public class MainVerticle extends AbstractVerticle
+{
+    private static final Logger logger = LoggerFactory.getLogger(MainVerticle.class);
+
+    @Override
+    public  void start(Promise<Void> startPromise) {
         String currentLevel = System.getenv("LOG_LEVEL");
         logger.info("Current LOG_LEVEL is: {}", (currentLevel!= null? currentLevel : "INFO (default)"));
 
 
         MicrometerMetricsOptions metricsOptions = new MicrometerMetricsOptions()
                 .setEnabled(true)
+
                 .setJvmMetricsEnabled(true)
                 .setPrometheusOptions(
                   new VertxPrometheusOptions().setEnabled(true)
-                          .setEmbeddedServerEndpoint("/metrics/vertx")
-                          .setStartEmbeddedServer(true)
-
-                          .setEmbeddedServerOptions(new HttpServerOptions().setPort(8082).setHost("0.0.0.0"))
-                );
+                          .setStartEmbeddedServer(false))
+                .addLabels(Label.HTTP_METHOD, Label.HTTP_PATH, Label.HTTP_CODE);
         // 5. Create Vertx with the explicit factory. This is the single source of truth.
+
+
         Vertx vertx = Vertx.builder()
                 .with(new VertxOptions()
                         .setMetricsOptions(metricsOptions))
+
                 .build();
+
+        var registry = BackendRegistries.getDefaultNow();
+
+        if (registry == null) {
+            logger.info("No backend registry available");
+        }
+        else {
+            new JvmGcMetrics().bindTo(registry);
+            logger.info("Registry class: {}", registry.getClass().getName());
+        }
+
 
         // Simple shutdown hook that just closes vertx
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -59,9 +74,14 @@ public class Main {
 
         // Deploy the API Gateway verticle
         vertx.deployVerticle(new ApiGatewayVerticle())
-                .onSuccess(id -> logger.info("Gateway started successfully"))
+                .onSuccess(id -> {
+                    logger.info("Gateway started successfully");
+                    startPromise.complete();
+                }
+                )
                 .onFailure(err -> {
                     logger.error("Failed to start gateway: {}", err.getMessage(), err);
+                    startPromise.fail(err);
                     System.exit(1);
                 });
     }

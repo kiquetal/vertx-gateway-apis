@@ -95,7 +95,7 @@ Access Grafana at http://localhost:3000 (default credentials: admin/admin)
 To run the application locally with JMX monitoring enabled, use the following Maven command:
 
 ```bash
-mvn exec:java -Dexec.mainClass="com.cresterida.gateway.Main" -Dexec.args="" -Djava.agent.opts="-javaagent:monitoring/jmx/jmx_prometheus_javaagent.jar=8081:monitoring/config/jmx_prometheus_config.yaml"
+mvn exec:java -Dexec.mainClass="com.cresterida.gateway.MainVerticle" -Dexec.args="" -Djava.agent.opts="-javaagent:monitoring/jmx/jmx_prometheus_javaagent.jar=8081:monitoring/config/jmx_prometheus_config.yaml"
 ```
 
 This command will:
