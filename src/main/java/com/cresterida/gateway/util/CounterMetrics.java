@@ -2,54 +2,41 @@ package com.cresterida.gateway.util;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tag;
 import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.micrometer.backends.BackendRegistries;
-
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.Arrays;
 
 public class CounterMetrics {
     private static final String DEFAULT_METRIC_NAME = "http_requests_total";
-    private static final Counter.Builder counterBuilder;
-    private static final ConcurrentMap<String, Counter> taggedCounters = new ConcurrentHashMap<>();
+    private static final MeterRegistry registry;
 
     static {
-        MeterRegistry meterRegistry = BackendRegistries.getDefaultNow();
-        if (meterRegistry != null) {
-            counterBuilder = Counter.builder(DEFAULT_METRIC_NAME)
-                    .description("Total HTTP requests processed");
-        } else {
-            counterBuilder = null;
-        }
+        registry = BackendRegistries.getDefaultNow();
     }
 
     public static Handler<RoutingContext> withMetrics(Handler<RoutingContext> handler) {
         return ctx -> {
-            if (counterBuilder != null) {
+            if (registry != null) {
+                // Call the original handler first
+                handler.handle(ctx);
+
+                // After handler completes, we can get the status code
                 String path = ctx.request().path();
                 String method = ctx.request().method().name();
-                String key = method + ":" + path;
+                String status = String.valueOf(ctx.response().getStatusCode());
 
-                Counter counter = taggedCounters.computeIfAbsent(key, k ->
-                    counterBuilder.tags("endpoint", path, "method", method)
-                        .register(BackendRegistries.getDefaultNow())
-                );
-                counter.increment();
+                // Create the counter with all three tags
+                registry.counter(DEFAULT_METRIC_NAME,
+                    Arrays.asList(
+                        Tag.of("endpoint", path),
+                        Tag.of("method", method),
+                        Tag.of("status", status)
+                    )).increment();
+            } else {
+                handler.handle(ctx);
             }
-            handler.handle(ctx);
         };
-    }
-
-    public static Counter getOrCreateCounter(String path, String method) {
-        if (counterBuilder == null) {
-            return null;
-        }
-        String key = method + ":" + path;
-        return taggedCounters.computeIfAbsent(key, k ->
-            counterBuilder.tags("endpoint", path, "method", method)
-                .register(BackendRegistries.getDefaultNow())
-        );
     }
 }
