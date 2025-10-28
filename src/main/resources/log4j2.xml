@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Properties>
+        <!-- Your app's log level, default to INFO -->
+        <Property name="APP_LEVEL">${env:LOG_LEVEL_APP:-INFO}</Property>
+        <!-- Everything else log level, default to WARN -->
+        <Property name="OTHER_LEVEL">${env:LOG_LEVEL:-WARN}</Property>
+    </Properties>
+
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+        </Console>
+    </Appenders>
+
+    <Loggers>
+        <!-- Your app uses LOG_LEVEL_APP -->
+        <Logger name="com.cresterida.gateway" level="${APP_LEVEL}" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+
+        <!-- Everything else uses LOG_LEVEL -->
+        <Root level="${OTHER_LEVEL}">
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
+</Configuration>
