@@ -1,8 +1,50 @@
 # Vert.x API Gateway
 
-## Metrics and Monitoring
+## Table of Contents
+1. [Configuration](#configuration)
+   - [Environment Variables](#environment-variables)
+   - [Logging Configuration](#logging-configuration)
+2. [Metrics and Monitoring](#metrics-and-monitoring)
+   - [HTTP Request Metrics](#http-request-metrics)
+   - [Prometheus Metrics](#prometheus-metrics)
+   - [JMX Monitoring](#jmx-monitoring)
+   - [Available Metrics](#available-metrics)
+   - [Grafana Dashboard](#grafana-dashboard)
+3. [Deployment](#deployment)
+   - [Docker Compose Setup](#docker-compose-setup)
+4. [Local Development](#local-development)
+   - [Running with JMX Monitoring](#running-with-jmx-monitoring)
 
-The API Gateway exposes metrics in Prometheus format and includes JMX monitoring capabilities.
+## Configuration
+
+### Environment Variables
+
+The application can be configured using the following environment variables:
+
+| Variable | Description | Default | Valid Values |
+|----------|-------------|---------|--------------|
+| LOG_LEVEL | Global logging level for the application | INFO | DEBUG, INFO, WARN, ERROR |
+| LOG_LEVEL_APP | Specific logging level for application code | INFO | DEBUG, INFO, WARN, ERROR |
+
+Example usage:
+```bash
+# Set more verbose logging for development
+export LOG_LEVEL=DEBUG
+export LOG_LEVEL_APP=DEBUG
+
+# Set production logging levels
+export LOG_LEVEL=WARN
+export LOG_LEVEL_APP=INFO
+```
+
+### Logging Configuration
+
+The application uses Log4j2 for logging. The logging configuration can be customized by modifying `src/main/resources/log4j2.xml`. The logging levels are configured in the following hierarchy:
+
+1. `LOG_LEVEL` affects all loggers
+2. `LOG_LEVEL_APP` specifically affects loggers under the `com.cresterida.gateway` package
+
+## Metrics and Monitoring
 
 ### HTTP Request Metrics
 
@@ -75,6 +117,8 @@ jconsole service:jmx:rmi:///jndi/rmi://localhost:8081/jmxrmi
 
 A sample Grafana dashboard is available in the `monitoring` directory. Import it into your Grafana instance to visualize the metrics.
 
+## Deployment
+
 ### Docker Compose Setup
 
 To run the complete monitoring stack:
@@ -87,6 +131,9 @@ services:
     ports:
       - "8080:8080"
       - "8081:8081"
+    environment:
+      - LOG_LEVEL=INFO
+      - LOG_LEVEL_APP=INFO
 
   prometheus:
     image: prom/prometheus
@@ -117,13 +164,18 @@ Access Grafana at http://localhost:3000 (default credentials: admin/admin)
 To run the application locally with JMX monitoring enabled, use the following Maven command:
 
 ```bash
-mvn exec:java -Dexec.mainClass="com.cresterida.gateway.MainVerticle" -Dexec.args="" -Djava.agent.opts="-javaagent:monitoring/jmx/jmx_prometheus_javaagent.jar=8081:monitoring/config/jmx_prometheus_config.yaml"
+# With custom logging levels
+LOG_LEVEL=DEBUG LOG_LEVEL_APP=DEBUG mvn exec:java \
+  -Dexec.mainClass="com.cresterida.gateway.MainVerticle" \
+  -Dexec.args="" \
+  -Djava.agent.opts="-javaagent:monitoring/jmx/jmx_prometheus_javaagent.jar=8081:monitoring/config/jmx_prometheus_config.yaml"
 ```
 
 This command will:
 - Start the application using Maven
 - Enable JMX monitoring on port 8081
 - Use the JMX Prometheus configuration from monitoring/config/jmx_prometheus_config.yaml
+- Set DEBUG level logging for development
 - Expose metrics endpoint at http://localhost:8081/metrics
 
 You can then access:
