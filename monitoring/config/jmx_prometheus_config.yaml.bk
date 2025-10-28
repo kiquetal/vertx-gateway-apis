@@ -1,0 +1,48 @@
+---
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+rules:
+  # Vert.x specific metrics
+  - pattern: "vertx<[^>]+><([^>]+)>"
+    name: vertx_$1
+
+  # HTTP server metrics
+  - pattern: "vertx.http.server.*"
+    name: vertx_http_server_$1
+
+  # Event bus metrics
+  - pattern: "vertx.eventbus.*"
+    name: vertx_eventbus_$1
+
+  # JVM memory pools
+  - pattern: 'java.lang<type=MemoryPool, name=(.*)><>Usage.(.+):'
+    name: jvm_memory_pool_$2_bytes
+    labels:
+      pool: $1
+
+  # GC metrics
+  - pattern: 'java.lang<type=GarbageCollector, name=(.*)><>CollectionCount'
+    name: jvm_gc_collection_count
+    labels:
+      gc: $1
+
+  - pattern: 'java.lang<type=GarbageCollector, name=(.*)><>CollectionTime'
+    name: jvm_gc_collection_time_seconds
+    labels:
+      gc: $1
+
+  # Thread metrics
+  - pattern: 'java.lang<type=Threading><>(.+):'
+    name: jvm_threads_$1
+
+  # Memory metrics
+  - pattern: 'java.lang<type=Memory><>HeapMemoryUsage.(.+):'
+    name: jvm_memory_heap_$1_bytes
+
+  - pattern: 'java.lang<type=Memory><>NonHeapMemoryUsage.(.+):'
+    name: jvm_memory_nonheap_$1_bytes
+
+  # OS metrics
+  - pattern: 'java.lang<type=OperatingSystem><>(.+):'
+    name: system_$1
+
