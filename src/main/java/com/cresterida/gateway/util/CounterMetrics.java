@@ -3,16 +3,17 @@ package com.cresterida.gateway.util;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.micrometer.backends.BackendRegistries;
 
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class CounterMetrics {
     private static final String DEFAULT_METRIC_NAME = "http_requests_total";
     private static final Counter.Builder counterBuilder;
-    private static final Map<String, Counter> taggedCounters = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<String, Counter> taggedCounters = new ConcurrentHashMap<>();
 
     static {
         MeterRegistry meterRegistry = BackendRegistries.getDefaultNow();

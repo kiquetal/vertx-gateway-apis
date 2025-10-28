@@ -40,6 +40,7 @@ public class Main {
 
                 .build();
 
+
         var registry = BackendRegistries.getDefaultNow();
 
         if (registry == null) {
