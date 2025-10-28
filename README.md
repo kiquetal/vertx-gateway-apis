@@ -4,6 +4,28 @@
 
 The API Gateway exposes metrics in Prometheus format and includes JMX monitoring capabilities.
 
+### HTTP Request Metrics
+
+The gateway automatically tracks HTTP request metrics using Micrometer and Prometheus. Each request is tracked with the following tags:
+- `endpoint`: The request path
+- `method`: The HTTP method (GET, POST, etc.)
+- `status`: The HTTP status code of the response
+
+Example metrics in Prometheus format:
+```
+# Total requests for GET /admin/services with 200 status
+http_requests_total{endpoint="/admin/services",method="GET",status="200"} 42
+
+# Failed requests for POST /admin/services
+http_requests_total{endpoint="/admin/services",method="POST",status="400"} 3
+```
+
+These metrics allow you to:
+- Monitor request volume by endpoint
+- Track error rates
+- Analyze traffic patterns by HTTP method
+- Monitor response status codes distribution
+
 ### Prometheus Metrics
 
 Metrics are exposed at: `http://localhost:8080/metrics`
