@@ -3,10 +3,12 @@ package com.cresterida.gateway.handlers;
 import com.cresterida.gateway.model.ServiceDefinition;
 import com.cresterida.gateway.ratelimit.TokenBucket;
 import com.cresterida.gateway.registry.ServiceRegistry;
+import io.micrometer.core.instrument.Counter;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
+import io.vertx.micrometer.backends.BackendRegistries;
 
 import java.util.List;
 import java.util.Map;
@@ -15,10 +17,22 @@ import java.util.Optional;
 public class AdminServiceHandler {
     private final ServiceRegistry registry;
     private final Map<String, TokenBucket> limiters;
+    private final Counter adminListServicesCounter;
 
     public AdminServiceHandler(ServiceRegistry registry, Map<String, TokenBucket> limiters) {
         this.registry = registry;
         this.limiters = limiters;
+
+        // Initialize metrics counter
+        var meterRegistry = BackendRegistries.getDefaultNow();
+        if (meterRegistry != null) {
+            this.adminListServicesCounter = Counter.builder("admin_list_services_total")
+                    .description("Total number of list services requests")
+                    .tag("endpoint", "/admin/services")
+                    .register(meterRegistry);
+        } else {
+            this.adminListServicesCounter = null;
+        }
     }
 
     public void handleAddService(RoutingContext ctx) {
@@ -36,6 +50,10 @@ public class AdminServiceHandler {
     }
 
     public void handleListServices(RoutingContext ctx) {
+        if (adminListServicesCounter != null) {
+            adminListServicesCounter.increment();
+        }
+
         List<ServiceDefinition> list = registry.list();
         JsonArray arr = new JsonArray();
         list.forEach(sd -> arr.add(sd.toJson()));

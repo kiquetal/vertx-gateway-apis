@@ -4,9 +4,10 @@ import com.cresterida.gateway.model.ServiceDefinition;
 import com.cresterida.gateway.ratelimit.TokenBucket;
 import com.cresterida.gateway.registry.ServiceRegistry;
 import com.cresterida.gateway.worker.VehicleWorker;
+import io.micrometer.core.instrument.Meter;
 import io.micrometer.prometheusmetrics.PrometheusConfig;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
-import io.prometheus.metrics.model.registry.PrometheusRegistry;
+import io.micrometer.core.instrument.Counter;
 import io.vertx.core.DeploymentOptions;
 import com.cresterida.gateway.handlers.AdminServiceHandler;
 import io.vertx.core.AbstractVerticle;
@@ -45,8 +46,9 @@ public class ApiGatewayVerticle extends AbstractVerticle {
     private HttpServer httpServer;
     private final Map<String, TokenBucket> limiters = new ConcurrentHashMap<>();
     private AdminServiceHandler adminHandler;
+    private Counter requestCounter;
 
-  @Override
+    @Override
   public void start(Promise<Void> startPromise) {
 
     this.registry = new ServiceRegistry();
@@ -82,18 +84,17 @@ public class ApiGatewayVerticle extends AbstractVerticle {
     Router router = Router.router(vertx);
     router.route().handler(BodyHandler.create());
 
-
+    // Health and metrics endpoints
     router.get("/health/ready").handler(healthCheckHandler);
-    // Metrics endpoint
-
     router.get("/metrics").handler(PrometheusScrapingHandler.create());
 
-    // Admin API routes
+    // Admin API routes - these should match before the catch-all proxy
     router.post("/admin/services").handler(adminHandler::handleAddService);
     router.get("/admin/services").handler(adminHandler::handleListServices);
     router.get("/admin/services/:id").handler(adminHandler::handleGetService);
     router.put("/admin/services/:id").handler(adminHandler::handleUpdateService);
     router.delete("/admin/services/:id").handler(adminHandler::handleDeleteService);
+
     // Test route for VehicleWorker
     router.post("/test/vehicle").handler(ctx -> {
       JsonObject vehicle = ctx.body().asJsonObject();
@@ -116,7 +117,11 @@ public class ApiGatewayVerticle extends AbstractVerticle {
           .end(immediateResponse.encode());
     });
 
-    // Gateway catch-all
+    // Initialize metrics before setting up gateway handlers
+    initializeMetrics();
+    LOGGER.info("Initializing metrics and handlers...");
+
+
     router.route().handler(this::resolveServiceHandler);
     router.route().handler(this::rateLimitHandler);
     router.route().handler(this::proxyHandler);
@@ -201,10 +206,32 @@ public class ApiGatewayVerticle extends AbstractVerticle {
     ctx.next();
   }
 
+  private void initializeMetrics() {
+      var registry = BackendRegistries.getDefaultNow();
+      if (registry != null) {
+          requestCounter = Counter.builder("api_gateway_requests_total")
+                  .description("Total number of requests processed")
+                  .tag("component", "gateway")
+                  .register(registry);
+          LOGGER.info("Metrics initialized successfully");
+      } else {
+          LOGGER.error("Failed to initialize metrics: registry is null");
+      }
+
+  }
+
   private void proxyHandler(RoutingContext ctx) {
     ServiceDefinition sd = ctx.get("service");
+    LOGGER.info("Proxying service " + sd.getName());
     if (sd == null) { ctx.next(); return; }
 
+    LOGGER.debug("Processing request for path: {}", ctx.request().path());
+    if (requestCounter != null) {
+        requestCounter.increment();
+        LOGGER.debug("Request counter incremented for path: {}", ctx.request().path());
+    } else {
+        LOGGER.warn("Request counter is null for path: {} - metrics may not be initialized properly", ctx.request().path());
+    }
     // Store start time in context for logging
     ctx.put("startTime", System.nanoTime());
     String incomingPath = ctx.request().path();
