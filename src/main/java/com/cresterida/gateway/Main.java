@@ -1,6 +1,7 @@
 package com.cresterida.gateway;
 
 import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
 import io.micrometer.prometheusmetrics.PrometheusConfig;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import io.vertx.core.Vertx;
@@ -26,7 +27,6 @@ public class Main {
 
         MicrometerMetricsOptions metricsOptions = new MicrometerMetricsOptions()
                 .setEnabled(true)
-
                 .setJvmMetricsEnabled(true)
                 .setPrometheusOptions(
                   new VertxPrometheusOptions().setEnabled(true)
@@ -47,7 +47,7 @@ public class Main {
             logger.info("No backend registry available");
         }
         else {
-            new JvmGcMetrics().bindTo(registry);
+
             logger.info("Registry class: {}", registry.getClass().getName());
         }
 
@@ -60,6 +60,7 @@ public class Main {
                 vertx.close()
                         .onComplete(ar -> latch.countDown())
                         .onFailure( err -> logger.error("Error during Vert.x shutdown: {}", err.getMessage()));
+
 
                 // Wait for completion with a reasonable timeout
                 if (!latch.await(30, TimeUnit.SECONDS)) {
