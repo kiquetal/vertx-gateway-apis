@@ -1,18 +1,11 @@
 package com.cresterida.gateway;
 
-import io.micrometer.core.instrument.Clock;
-import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
-import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
-import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
-import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
-import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
-import io.micrometer.jmx.JmxConfig;
-import io.micrometer.jmx.JmxMeterRegistry;
 import io.micrometer.prometheusmetrics.PrometheusConfig;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
+import io.vertx.core.http.HttpServerOptions;
 import io.vertx.micrometer.MicrometerMetricsFactory;
 import io.vertx.micrometer.MicrometerMetricsOptions;
 import io.vertx.micrometer.VertxPrometheusOptions;
@@ -23,19 +16,20 @@ import java.util.concurrent.TimeUnit;
 
 public class Main {
     private static final Logger logger = LoggerFactory.getLogger(Main.class);
-
     public static void main(String args []) {
         String currentLevel = System.getenv("LOG_LEVEL");
         logger.info("Current LOG_LEVEL is: {}", (currentLevel!= null? currentLevel : "INFO (default)"));
 
 
-
-
         MicrometerMetricsOptions metricsOptions = new MicrometerMetricsOptions()
                 .setEnabled(true)
-                .setJvmMetricsEnabled(false)
+                .setJvmMetricsEnabled(true)
                 .setPrometheusOptions(
                   new VertxPrometheusOptions().setEnabled(true)
+                          .setEmbeddedServerEndpoint("/metrics/vertx")
+                          .setStartEmbeddedServer(true)
+
+                          .setEmbeddedServerOptions(new HttpServerOptions().setPort(8082).setHost("0.0.0.0"))
                 );
         // 5. Create Vertx with the explicit factory. This is the single source of truth.
         Vertx vertx = Vertx.builder()

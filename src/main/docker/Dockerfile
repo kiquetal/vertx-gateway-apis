@@ -33,7 +33,7 @@ ENV SHUTDOWN_TIMEOUT_MS=30000
 
 # Expose application port
 EXPOSE 8080
-
+EXPOSE 8082
 # Set the entry point with Java 21 optimizations
 ENTRYPOINT ["java", \
     "--enable-preview", \
