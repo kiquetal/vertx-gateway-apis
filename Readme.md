@@ -15,6 +15,17 @@ This project provides a minimal, high‑performance API Gateway starter focused 
 - Dynamic registry: Add/update/remove services at runtime through the admin REST API.
 - Path routing: Longest‑prefix match on `pathPrefix`.
 - Proxy: Forwards method, headers (minus hop‑by‑hop), query and body to the upstream base URL.
+- Metrics: Built-in Prometheus metrics support with custom counters for monitoring request rates and service usage.
+- Health Checks: Integrated health check endpoint at `/health/ready` for monitoring application status.
+- Prometheus Integration: Exposed metrics endpoint at `/metrics` for Prometheus scraping.
+- Monitoring: Custom metrics for tracking:
+  - Total API requests
+  - Per-endpoint request counters
+  - Service-specific metrics
+- JVM Metrics: Integrated JVM metrics for monitoring memory, threads, and garbage collection.
+- Virtual Thread Support: Utilizes Java 21 virtual threads for improved scalability.
+- Graceful Shutdown: Proper shutdown handling with connection draining.
+- Configurable Logging: Dynamic log level configuration via environment variables.
 ## Quick start
 Requirements: JDK 17+, Maven 3.9+
 ### Development Mode
@@ -114,3 +125,80 @@ curl -X POST http://localhost:8080/vehicles/process \
   }'
 ```
 The worker processes each vehicle request asynchronously and returns a response with status and processing time information.
+
+## Metrics and Monitoring
+
+The gateway provides comprehensive metrics through Prometheus integration:
+
+### Available Endpoints
+- `/metrics` - Prometheus metrics endpoint
+- `/health/ready` - Application health check endpoint
+
+### Metrics Categories
+1. Gateway Metrics:
+```
+# Total API requests
+api_gateway_requests_total{component="gateway"}
+
+# Admin services list requests
+custom_admin_list_services{handler="admin",operation="list"}
+
+# Vert.x metrics
+vertx_http_server_requests{path="/admin/services",method="GET"}
+vertx_http_server_active_connections
+```
+
+2. JVM Metrics:
+- Memory pool usage
+- Garbage collection stats
+- Thread information
+- CPU usage
+
+### Monitoring Setup
+1. Prometheus Configuration:
+```yaml
+scrape_configs:
+  - job_name: 'vertx-gateway'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['localhost:8080']
+```
+
+2. Environment Configuration:
+```bash
+# Configure log level
+export LOG_LEVEL=DEBUG
+
+# Configure metrics port (if different from main port)
+export METRICS_PORT=8082
+```
+
+### Docker Support
+The application includes Docker support with metrics enabled:
+```bash
+# Build the Docker image
+docker build -f src/main/docker/Dockerfile -t vertx-gateway .
+
+# Run with metrics exposed
+docker run -p 8080:8080 -p 8082:8082 -e LOG_LEVEL=INFO vertx-gateway
+```
+
+### Health Checks
+The `/health/ready` endpoint provides application health status:
+- Returns 200 OK when the application is ready to accept requests
+- Includes readiness status for all critical components
+- Can be extended with custom health checks
+
+Example health check response:
+```json
+{
+  "status": "UP",
+  "checks": [
+    {
+      "id": "application-ready",
+      "status": "UP"
+    }
+  ]
+}
+```
+
