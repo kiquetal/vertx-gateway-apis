@@ -4,6 +4,9 @@ import com.cresterida.gateway.model.ServiceDefinition;
 import com.cresterida.gateway.ratelimit.TokenBucket;
 import com.cresterida.gateway.registry.ServiceRegistry;
 import com.cresterida.gateway.worker.VehicleWorker;
+import io.micrometer.prometheusmetrics.PrometheusConfig;
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
+import io.prometheus.metrics.model.registry.PrometheusRegistry;
 import io.vertx.core.DeploymentOptions;
 import com.cresterida.gateway.handlers.AdminServiceHandler;
 import io.vertx.core.AbstractVerticle;
@@ -14,6 +17,8 @@ import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.healthchecks.HealthChecks;
+import io.vertx.ext.healthchecks.Status;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
@@ -21,6 +26,7 @@ import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.ext.web.client.HttpRequest;
 import io.vertx.ext.web.client.HttpResponse;
+import io.vertx.ext.web.healthchecks.HealthCheckHandler;
 import io.vertx.micrometer.MicrometerMetricsOptions;
 import io.vertx.micrometer.VertxPrometheusOptions;
 import io.vertx.micrometer.backends.BackendRegistries;
@@ -63,9 +69,21 @@ public class ApiGatewayVerticle extends AbstractVerticle {
 
     this.adminHandler = new AdminServiceHandler(registry, limiters);
 
+
+      HealthChecks hc = HealthChecks.create(vertx);
+      HealthCheckHandler healthCheckHandler = HealthCheckHandler.createWithHealthChecks(hc);
+
+      hc.register("application-ready", promise -> {
+          // Here you can add checks to verify if the application is ready
+          promise.complete(Status.OK());
+      });
+
+
     Router router = Router.router(vertx);
     router.route().handler(BodyHandler.create());
 
+
+    router.get("/health/ready").handler(healthCheckHandler);
     // Metrics endpoint
     router.get("/metrics").handler(PrometheusScrapingHandler.create());
     // Admin API routes

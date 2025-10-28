@@ -1,9 +1,20 @@
 package com.cresterida.gateway;
 
+import io.micrometer.core.instrument.Clock;
+import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
+import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
+import io.micrometer.jmx.JmxConfig;
+import io.micrometer.jmx.JmxMeterRegistry;
+import io.micrometer.prometheusmetrics.PrometheusConfig;
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
+import io.vertx.micrometer.MicrometerMetricsFactory;
 import io.vertx.micrometer.MicrometerMetricsOptions;
-import io.vertx.micrometer.VertxJmxMetricsOptions;
 import io.vertx.micrometer.VertxPrometheusOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,24 +24,24 @@ import java.util.concurrent.TimeUnit;
 public class Main {
     private static final Logger logger = LoggerFactory.getLogger(Main.class);
 
-    public static void main(String[] args) {
+    public static void main(String args []) {
         String currentLevel = System.getenv("LOG_LEVEL");
-        logger.info("Current LOG_LEVEL is: {}", (currentLevel != null ? currentLevel : "INFO (default)"));
+        logger.info("Current LOG_LEVEL is: {}", (currentLevel!= null? currentLevel : "INFO (default)"));
 
-        // Configure Micrometer with Prometheus
-        VertxPrometheusOptions prometheusOptions = new VertxPrometheusOptions()
-                .setStartEmbeddedServer(false)
-                .setPublishQuantiles(true)
-            .setEnabled(true);
+
+
+
         MicrometerMetricsOptions metricsOptions = new MicrometerMetricsOptions()
-            .setEnabled(true)
-                .setJvmMetricsEnabled(true)
-                .setJmxMetricsOptions(new VertxJmxMetricsOptions().setEnabled(true))
-            .setPrometheusOptions(prometheusOptions);
-
-        // Create Vertx with metrics enabled
-        Vertx vertx = Vertx.vertx(new VertxOptions()
-            .setMetricsOptions(metricsOptions));
+                .setEnabled(true)
+                .setJvmMetricsEnabled(false)
+                .setPrometheusOptions(
+                  new VertxPrometheusOptions().setEnabled(true)
+                );
+        // 5. Create Vertx with the explicit factory. This is the single source of truth.
+        Vertx vertx = Vertx.builder()
+                .with(new VertxOptions()
+                        .setMetricsOptions(metricsOptions))
+                .build();
 
         // Simple shutdown hook that just closes vertx
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -38,9 +49,8 @@ public class Main {
             try {
                 CountDownLatch latch = new CountDownLatch(1);
                 vertx.close()
-                    .onComplete(ar -> latch.countDown()
-                              )
-                        .onFailure( err -> logger.error("Error during Vert.x shutdown: {}", err.getMessage())) ;
+                        .onComplete(ar -> latch.countDown())
+                        .onFailure( err -> logger.error("Error during Vert.x shutdown: {}", err.getMessage()));
 
                 // Wait for completion with a reasonable timeout
                 if (!latch.await(30, TimeUnit.SECONDS)) {
@@ -55,10 +65,10 @@ public class Main {
 
         // Deploy the API Gateway verticle
         vertx.deployVerticle(new ApiGatewayVerticle())
-            .onSuccess(id -> logger.info("Gateway started successfully"))
-            .onFailure(err -> {
-                logger.error("Failed to start gateway: {}", err.getMessage());
-                System.exit(1);
-            });
+                .onSuccess(id -> logger.info("Gateway started successfully"))
+                .onFailure(err -> {
+                    logger.error("Failed to start gateway: {}", err.getMessage(), err);
+                    System.exit(1);
+                });
     }
 }
