@@ -6,10 +6,6 @@ WORKDIR /build
 COPY pom.xml .
 RUN mvn dependency:go-offline
 
-# Download JMX exporter agent
-RUN wget https://repo1.maven.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/0.19.0/jmx_prometheus_javaagent-0.19.0.jar \
-    -O jmx_prometheus_javaagent.jar
-
 # Copy source and build
 COPY src ./src
 RUN mvn clean package -DskipTests
@@ -22,10 +18,8 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 vertx && \
     adduser --system --uid 1001 --gid 1001 vertx
 
-# Copy the fat JAR and monitoring components
+# Copy the fat JAR
 COPY --from=builder /build/target/*-fat.jar app.jar
-COPY --from=builder /build/jmx_prometheus_javaagent.jar /app/jmx_prometheus_javaagent.jar
-COPY src/main/resources/jmx_prometheus_config.yaml /app/jmx_prometheus_config.yaml
 
 # Set permissions
 RUN chown -R vertx:vertx /app
@@ -37,13 +31,11 @@ USER vertx
 ENV LOG_LEVEL=INFO
 ENV SHUTDOWN_TIMEOUT_MS=30000
 
-# Expose application and metrics ports
+# Expose application port
 EXPOSE 8080
-EXPOSE 8081
 
-# Set the entry point with Java 21 optimizations and JMX agent
+# Set the entry point with Java 21 optimizations
 ENTRYPOINT ["java", \
-    "-javaagent:/app/jmx_prometheus_javaagent.jar=8081:/app/jmx_prometheus_config.yaml", \
     "--enable-preview", \
     "--enable-native-access=ALL-UNNAMED", \
     "-XX:+UseZGC", \

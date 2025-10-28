@@ -3,6 +3,7 @@ package com.cresterida.gateway;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
 import io.vertx.micrometer.MicrometerMetricsOptions;
+import io.vertx.micrometer.VertxJmxMetricsOptions;
 import io.vertx.micrometer.VertxPrometheusOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,11 +18,15 @@ public class Main {
         logger.info("Current LOG_LEVEL is: {}", (currentLevel != null ? currentLevel : "INFO (default)"));
 
         // Configure Micrometer with Prometheus
+        VertxPrometheusOptions prometheusOptions = new VertxPrometheusOptions()
+                .setStartEmbeddedServer(false)
+                .setPublishQuantiles(true)
+            .setEnabled(true);
         MicrometerMetricsOptions metricsOptions = new MicrometerMetricsOptions()
             .setEnabled(true)
-            .setPrometheusOptions(new VertxPrometheusOptions()
-                .setEnabled(true));
-
+                .setJvmMetricsEnabled(true)
+                .setJmxMetricsOptions(new VertxJmxMetricsOptions().setEnabled(true))
+            .setPrometheusOptions(prometheusOptions);
 
         // Create Vertx with metrics enabled
         Vertx vertx = Vertx.vertx(new VertxOptions()

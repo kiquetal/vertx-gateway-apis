@@ -61,6 +61,12 @@
           <artifactId>micrometer-registry-prometheus</artifactId>
           <version>1.15.5</version>
       </dependency>
+      <dependency>
+          <groupId>io.micrometer</groupId>
+          <artifactId>micrometer-registry-jmx</artifactId>
+            <version>1.15.5</version>
+      </dependency>
+
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
@@ -79,7 +85,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${maven-compiler-plugin.version}</version>
                 <configuration>
-                    <release>17</release>
+                    <release>21</release>
                 </configuration>
             </plugin>
             <plugin>
@@ -117,7 +123,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>${exec-maven-plugin.version}</version>
                 <configuration>
-                    <mainClass>${launcher.class}</mainClass>
+                    <mainClass>com.cresterida.gateway.Main</mainClass>
                     <arguments>
                         <argument>${main.verticle}</argument>
                     </arguments>

@@ -67,8 +67,7 @@ public class ApiGatewayVerticle extends AbstractVerticle {
     router.route().handler(BodyHandler.create());
 
     // Metrics endpoint
-    router.route("/metrics").handler(PrometheusScrapingHandler.create());
-
+    router.get("/metrics").handler(PrometheusScrapingHandler.create());
     // Admin API routes
     router.post("/admin/services").handler(adminHandler::handleAddService);
     router.get("/admin/services").handler(adminHandler::handleListServices);
