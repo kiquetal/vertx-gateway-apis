@@ -4,9 +4,6 @@ import com.cresterida.gateway.model.ServiceDefinition;
 import com.cresterida.gateway.ratelimit.TokenBucket;
 import com.cresterida.gateway.registry.ServiceRegistry;
 import com.cresterida.gateway.worker.VehicleWorker;
-import io.micrometer.core.instrument.Meter;
-import io.micrometer.prometheusmetrics.PrometheusConfig;
-import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import io.micrometer.core.instrument.Counter;
 import io.vertx.core.DeploymentOptions;
 import com.cresterida.gateway.handlers.AdminServiceHandler;
@@ -28,19 +25,16 @@ import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.ext.web.client.HttpRequest;
 import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.healthchecks.HealthCheckHandler;
-import io.vertx.micrometer.MicrometerMetricsOptions;
-import io.vertx.micrometer.VertxPrometheusOptions;
 import io.vertx.micrometer.backends.BackendRegistries;
 import io.vertx.micrometer.PrometheusScrapingHandler;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import java.net.URI;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ApiGatewayVerticle extends AbstractVerticle {
-    private static final Logger LOGGER = LoggerFactory.getLogger(ApiGatewayVerticle.class);
+    private static final Logger LOGGER = LogManager.getLogger(ApiGatewayVerticle.class);
     private ServiceRegistry registry;
     private WebClient client;
     private HttpServer httpServer;
@@ -132,7 +126,7 @@ public class ApiGatewayVerticle extends AbstractVerticle {
       .listen(port)
       .onSuccess(s -> {
         this.httpServer = s;
-        LOGGER.info("HTTP server started on port {}", port);
+        LOGGER.debug("HTTP server started on port {}", port);
         startPromise.complete();
       })
       .onFailure(startPromise::fail);

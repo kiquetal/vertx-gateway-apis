@@ -1,33 +1,28 @@
 package com.cresterida.gateway;
 
-import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
-import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
-import io.micrometer.prometheusmetrics.PrometheusConfig;
-import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
-import io.vertx.core.http.HttpServerOptions;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import io.vertx.micrometer.Label;
-import io.vertx.micrometer.MicrometerMetricsFactory;
 import io.vertx.micrometer.MicrometerMetricsOptions;
 import io.vertx.micrometer.VertxPrometheusOptions;
 import io.vertx.micrometer.backends.BackendRegistries;
-import io.vertx.micrometer.backends.BackendRegistry;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 public class Main {
-    private static final Logger logger = LoggerFactory.getLogger(Main.class);
+    private static final Logger logger = LogManager.getLogger(Main.class);
     public static void main(String args []) {
         String currentLevel = System.getenv("LOG_LEVEL");
-        logger.info("Current LOG_LEVEL is: {}", (currentLevel!= null? currentLevel : "INFO (default)"));
+        logger.info(currentLevel);
 
 
         MicrometerMetricsOptions metricsOptions = new MicrometerMetricsOptions()
                 .setEnabled(true)
                 .setJvmMetricsEnabled(true)
+
                 .setPrometheusOptions(
                   new VertxPrometheusOptions().setEnabled(true)
                           .setStartEmbeddedServer(false))
@@ -48,7 +43,16 @@ public class Main {
         }
         else {
 
-            logger.info("Registry class: {}", registry.getClass().getName());
+            logger.info(registry.getClass().getName());
+        }
+
+
+        // Check if this is the only Vert.x instance
+        try {
+            Vertx current = Vertx.currentContext() != null ? Vertx.currentContext().owner() : null;
+            logger.info( current);
+        } catch (Exception e) {
+            logger.info("No current Vert.x context");
         }
 
 
@@ -59,7 +63,7 @@ public class Main {
                 CountDownLatch latch = new CountDownLatch(1);
                 vertx.close()
                         .onComplete(ar -> latch.countDown())
-                        .onFailure( err -> logger.error("Error during Vert.x shutdown: {}", err.getMessage()));
+                        .onFailure( err -> logger.error(err.getMessage()));
 
 
                 // Wait for completion with a reasonable timeout
@@ -72,13 +76,21 @@ public class Main {
             }
             logger.info("Shutdown complete");
         }));
-
+        printLogDetails();
         // Deploy the API Gateway verticle
         vertx.deployVerticle(new ApiGatewayVerticle())
                 .onSuccess(id -> logger.info("Gateway started successfully"))
                 .onFailure(err -> {
-                    logger.error("Failed to start gateway: {}", err.getMessage(), err);
+                    logger.error(err);
                     System.exit(1);
                 });
+
+    }
+
+    static private void printLogDetails() {
+
+        logger.info("Logger Name: " + logger.getName());
+        logger.info("Logger Level: " + logger.getLevel());
+        logger.info("Logger Class: " + logger.getClass().getName());
     }
 }
