@@ -3,6 +3,7 @@ package com.cresterida.gateway;
 import com.cresterida.gateway.model.ServiceDefinition;
 import com.cresterida.gateway.ratelimit.TokenBucket;
 import com.cresterida.gateway.registry.ServiceRegistry;
+import com.cresterida.gateway.util.CounterMetrics;
 import com.cresterida.gateway.worker.VehicleWorker;
 import io.micrometer.core.instrument.Counter;
 import io.vertx.core.DeploymentOptions;
@@ -84,8 +85,8 @@ public class ApiGatewayVerticle extends AbstractVerticle {
 
     // Admin API routes - these should match before the catch-all proxy
     router.post("/admin/services").handler(adminHandler::handleAddService);
-    router.get("/admin/services").handler(adminHandler::handleListServices);
-    router.get("/admin/services/:id").handler(adminHandler::handleGetService);
+    router.get("/admin/services").handler(CounterMetrics.withMetrics(adminHandler::handleListServices));
+    router.get("/admin/services/:id").handler(CounterMetrics.withMetrics(adminHandler::handleGetService));
     router.put("/admin/services/:id").handler(adminHandler::handleUpdateService);
     router.delete("/admin/services/:id").handler(adminHandler::handleDeleteService);
 
