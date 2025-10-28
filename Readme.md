@@ -24,8 +24,29 @@ This project provides a minimal, high‑performance API Gateway starter focused 
   - Service-specific metrics
 - JVM Metrics: Integrated JVM metrics for monitoring memory, threads, and garbage collection.
 - Virtual Thread Support: Utilizes Java 21 virtual threads for improved scalability.
-- Graceful Shutdown: Proper shutdown handling with connection draining.
+- Graceful Shutdown: Proper shutdown handling with connection draining and reliable shutdown logging.
+- Shutdown Logging: Uses System.out.println for guaranteed visibility of shutdown sequence, ensuring critical shutdown steps are always logged even when the logging system is terminating.
 - Configurable Logging: Dynamic log level configuration via environment variables.
+
+### Shutdown Process
+The application implements a reliable shutdown sequence that:
+1. Uses direct console output (System.out.println) instead of logger for shutdown messages
+2. Ensures visibility of the complete shutdown sequence
+3. Shows status of each component being shut down:
+   - WebClient closure
+   - HTTP server shutdown
+   - Verticle termination
+4. Provides clear feedback even when logging framework is shutting down
+
+Example shutdown output:
+```
+ApiGatewayVerticle stopping: initiating graceful shutdown...
+Closing WebClient...
+WebClient closed successfully
+Closing HTTP server on port 8080...
+HTTP server closed successfully
+ApiGatewayVerticle shutdown complete - completing stop promise
+```
 ## Quick start
 Requirements: JDK 17+, Maven 3.9+
 ### Development Mode
