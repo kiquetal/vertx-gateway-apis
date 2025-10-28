@@ -12,7 +12,7 @@
     <maven.compiler.target>21</maven.compiler.target>
     <maven.compiler.release>21</maven.compiler.release>
     <vertx.version>5.0.4</vertx.version>
-    <main.verticle>com.cresterida.gateway.MainVerticle</main.verticle>
+    <main.verticle>com.cresterida.gateway.Main</main.verticle>
       <launcher.class>io.vertx.launcher.application.VertxApplication</launcher.class>
       <maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
       <exec-maven-plugin.version>3.0.0</exec-maven-plugin.version>
@@ -101,8 +101,8 @@
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <manifestEntries>
-                                        <Main-Class>${launcher.class}</Main-Class>
-                                        <Main-Verticle>${main.verticle}</Main-Verticle>
+                                        <Main-Class>${main.verticle}</Main-Class>
+                                      <!--  <Main-Verticle>${main.verticle}</Main-Verticle> -->
                                     </manifestEntries>
                                 </transformer>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
@@ -122,30 +122,11 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>${exec-maven-plugin.version}</version>
                 <configuration>
-                    <mainClass>com.cresterida.gateway.MainVerticle</mainClass>
+                    <mainClass>com.cresterida.gateway.Main</mainClass>
                     <arguments>
                         <argument>${main.verticle}</argument>
                     </arguments>
                 </configuration>
-            </plugin>
-            <plugin>
-                <groupId>io.reactiverse</groupId>
-                <artifactId>vertx-maven-plugin</artifactId>
-                <version>${vertx-maven-plugin.version}</version>
-                <configuration>
-                    <redeploy>true</redeploy>
-                    <verticle>${main.verticle}</verticle>
-                    <launcher>${launcher.class}</launcher>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>vertx-prepackage</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>package</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>
