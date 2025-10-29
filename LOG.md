@@ -238,3 +238,53 @@ If you need to use the latest Loki version, you can:
    ```
 
 **Note:** When upgrading Loki in production, always follow the official migration guide to ensure proper schema updates.
+
+## Loki Configuration Details
+
+The latest Loki configuration uses:
+- Schema version: v13
+- Storage engine: tsdb
+- Features enabled:
+  - Structured metadata
+  - Native OTLP ingestion
+  - Advanced querying capabilities
+
+### Key Configuration Points
+
+1. **Schema and Storage**:
+   ```yaml
+   schema_config:
+     configs:
+       - from: 2023-01-01
+         store: tsdb
+         object_store: filesystem
+         schema: v13
+   ```
+
+2. **Performance Tuning**:
+   ```yaml
+   limits_config:
+     ingestion_rate_mb: 32
+     ingestion_burst_size_mb: 64
+     max_entries_limit_per_query: 5000
+   ```
+
+3. **Data Retention**:
+   ```yaml
+   compactor:
+     retention_enabled: true
+     retention_period: 744h  # 31 days
+   ```
+
+### Volume Management
+
+In Docker:
+- Uses named volumes for persistence
+- Separate volume for Loki data: `loki_data`
+- Application logs volume: `app_logs`
+
+In Kubernetes:
+- Uses persistent volumes for Loki
+- EmptyDir for application logs in the pod
+- ConfigMaps for configuration
+

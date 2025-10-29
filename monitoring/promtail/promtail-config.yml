@@ -1,5 +1,6 @@
 server:
   http_listen_port: 9080
+  grpc_listen_port: 0
 
 positions:
   filename: /tmp/positions.yaml
@@ -24,3 +25,10 @@ scrape_configs:
             logger: logger
             message: message
             thread: thread
+      - timestamp:
+          source: timestamp
+          format: "2006-01-02 15:04:05.000"
+      - labels:
+          level:
+          logger:
+          thread:
