@@ -10,6 +10,21 @@ clients:
 
 scrape_configs:
   - job_name: vertx-logs
+    pipeline_stages:
+      - json:
+          expressions:
+            ts: timestamp
+            level: level
+            logger: logger
+            thread: thread
+            message: message
+      - timestamp:
+          source: ts
+          format: "2006-01-02 15:04:05.000"
+      - labels:
+          level:
+          logger:
+          thread:
     static_configs:
       - targets:
           - localhost
@@ -17,18 +32,3 @@ scrape_configs:
           job: vertx
           app: gateway
           __path__: /var/log/vertx/application*.log
-    pipeline_stages:
-      - json:
-          expressions:
-            timestamp: timestamp
-            level: level
-            logger: logger
-            message: message
-            thread: thread
-      - timestamp:
-          source: timestamp
-          format: "2006-01-02 15:04:05.000"
-      - labels:
-          level:
-          logger:
-          thread:
