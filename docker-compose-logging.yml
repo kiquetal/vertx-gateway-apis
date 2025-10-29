@@ -1,7 +1,8 @@
 services:
   loki:
     image: grafana/loki:2.9.0
-    command: -config.file=/etc/loki/loki-config.yml
+    command:
+    - "-config.file=/etc/loki/loki-config.yml"
     ports:
       - "3100:3100"
       - "9095:9095"  # Adding gRPC port
@@ -21,23 +22,26 @@ services:
       - loki_data:/data/loki
     user: root
 
-  agent:
-    image: grafana/agent:v0.37.1
-    volumes:
-      - ./monitoring/agent:/etc/agent
-      - external_app_logs_volume:/var/log/vertx:ro
-
-    # --- THIS IS THE FIX ---
-    # Use the list (array) format to pass arguments
-    # to the image's default ENTRYPOINT (/bin/agent)
-    command:
-    - "run"
-    - "--server.http.listen-addr=0.0.0.0:12345"
-    - "/etc/agent/config.river"
-
-
+  alloy:
+    image: grafana/alloy:latest
     ports:
       - "12345:12345"
+    volumes:
+      # Mount your local config file as read-only
+      # I've assumed it's in a local './alloy' directory
+      - ./monitoring/alloy/config.alloy:/etc/alloy/config.alloy:ro
+
+      # --- This is the key improvement ---
+      # Persist the data directory using a named volume
+      - alloy_data:/var/lib/alloy/data
+
+    # Use the list format for the command, just like we fixed
+    # for Loki and the agent in our previous conversation.
+    command:
+      - "run"
+      - "--server.http.listen-addr=0.0.0.0:12345"
+      - "--storage.path=/var/lib/alloy/data"
+      - "/etc/alloy/config.alloy"
     depends_on:
       - loki
     # You will also need to add your agent to the network
@@ -60,6 +64,7 @@ services:
 
 volumes:
   loki_data:
+  alloy_data:
   external_app_logs_volume:
     external: true
 networks:

@@ -1,0 +1,36 @@
+// This file is /etc/alloy/config.alloy inside the container
+
+// 1. Discover log files from the Vert.x volume
+local.file_match "vertx_logs" {
+  // This is the path *inside the Alloy container*
+  // that you defined in your docker-compose.yml
+  path_targets = [
+    {
+      "__path__" = "/var/log/vertx/*.log", // Find all .log files
+      "job"      = "vertx-app",            // Add a 'job' label to all logs
+      "instance" = env("HOSTNAME"),        // Add the container ID as an 'instance' label
+    },
+  ]
+}
+
+// 2. Read (tail) the files discovered above
+loki.source.file "read_logs" {
+  // Get the file list from the component above
+  targets    = local.file_match.vertx_logs.targets
+
+  // Send the log lines to the 'loki.write' component
+  forward_to = [loki.write.loki_server.receiver]
+}
+
+// 3. Send the logs to your Loki service
+loki.write "loki_server" {
+  endpoint {
+    // This URL works because 'loki' is the service name
+    // on the same 'external_gateway_network'
+    url = "http://loki:3100/loki/api/v1/push"
+
+    // If your Loki config uses multi-tenancy, you
+    // may need to uncomment and set this:
+    // tenant_id = "your-tenant-id"
+  }
+}
