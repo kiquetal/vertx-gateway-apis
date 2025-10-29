@@ -193,3 +193,48 @@ spec:
 4. **Deployment Strategy**:
    - Docker: Independent containers
    - Kubernetes: Sidecar pattern
+
+# Logging System Documentation
+
+## Troubleshooting Common Issues
+
+### Loki Schema Version Error (2025-10-29)
+
+The error encountered was related to incompatible schema versions and index types in Loki. This occurred because:
+
+1. **Schema Version Mismatch**: 
+   - The configuration was trying to use features that require schema v13
+   - Current schema version was v11
+   - These features include Structured Metadata and native OTLP ingestion
+
+2. **Index Type Incompatibility**:
+   - The configuration was using `boltdb` index type
+   - New features require `tsdb` index type
+
+**Solution Applied:**
+- Pinned Loki version to 2.8.4 which has better compatibility with our current setup
+- This version provides a more stable environment without requiring immediate schema updates
+
+**Alternative Solutions:**
+If you need to use the latest Loki version, you can:
+
+1. Either disable structured metadata:
+   ```yaml
+   limits_config:
+     allow_structured_metadata: false
+   ```
+
+2. Or upgrade your schema configuration:
+   ```yaml
+   schema_config:
+     configs:
+       - from: 2023-01-01
+         store: tsdb
+         object_store: filesystem
+         schema: v13
+         index:
+           prefix: index_
+           period: 24h
+   ```
+
+**Note:** When upgrading Loki in production, always follow the official migration guide to ensure proper schema updates.
