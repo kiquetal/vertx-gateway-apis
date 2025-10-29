@@ -5,8 +5,6 @@ import io.vertx.core.VertxOptions;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.core.config.Configurator;
 import io.vertx.micrometer.Label;
 import io.vertx.micrometer.MicrometerMetricsOptions;
 import io.vertx.micrometer.VertxPrometheusOptions;
@@ -18,7 +16,9 @@ public class Main {
     private static Vertx vertx;
 
     public static void main(String args []) {
-        configureLogging();
+        String currentLevel = System.getenv("LOG_LEVEL");
+        logger.info(currentLevel);
+
 
         MicrometerMetricsOptions metricsOptions = new MicrometerMetricsOptions()
                 .setEnabled(true)
@@ -91,31 +91,6 @@ public class Main {
         }));
     }
 
-    private static void configureLogging() {
-        // Configure global logging level
-        String globalLevel = System.getenv("LOG_LEVEL");
-        if (globalLevel != null) {
-            try {
-                Level level = Level.valueOf(globalLevel.toUpperCase());
-                Configurator.setRootLevel(level);
-                logger.info("Set global logging level to: {}", level);
-            } catch (IllegalArgumentException e) {
-                logger.warn("Invalid LOG_LEVEL value: {}. Using default.", globalLevel);
-            }
-        }
-
-        // Configure application-specific logging level
-        String appLevel = System.getenv("LOG_LEVEL_APP");
-        if (appLevel != null) {
-            try {
-                Level level = Level.valueOf(appLevel.toUpperCase());
-                Configurator.setLevel("com.cresterida.gateway", level);
-                logger.info("Set application logging level to: {}", level);
-            } catch (IllegalArgumentException e) {
-                logger.warn("Invalid LOG_LEVEL_APP value: {}. Using default.", appLevel);
-            }
-        }
-    }
 
 
 
