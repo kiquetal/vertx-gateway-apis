@@ -11,38 +11,6 @@
             </PendingDiffInfo>
           </value>
         </entry>
-        <entry key="$PROJECT_DIR$/monitoring/grafana/dashboards/logs-dashboard.json">
-          <value>
-            <PendingDiffInfo>
-              <option name="filePath" value="$PROJECT_DIR$/monitoring/grafana/dashboards/logs-dashboard.json" />
-              <option name="updatedContent" value="{&#10;  &quot;annotations&quot;: {&#10;    &quot;list&quot;: [&#10;      {&#10;        &quot;builtIn&quot;: 1,&#10;        &quot;datasource&quot;: {&#10;          &quot;type&quot;: &quot;grafana&quot;,&#10;          &quot;uid&quot;: &quot;-- Grafana --&quot;&#10;        },&#10;        &quot;enable&quot;: true,&#10;        &quot;hide&quot;: true,&#10;        &quot;iconColor&quot;: &quot;rgba(0, 211, 255, 1)&quot;,&#10;        &quot;name&quot;: &quot;Annotations &amp; Alerts&quot;,&#10;        &quot;type&quot;: &quot;dashboard&quot;&#10;      }&#10;    ]&#10;  },&#10;  &quot;editable&quot;: true,&#10;  &quot;fiscalYearStartMonth&quot;: 0,&#10;  &quot;graphTooltip&quot;: 0,&#10;  &quot;id&quot;: 1,&#10;  &quot;links&quot;: [],&#10;  &quot;liveNow&quot;: false,&#10;  &quot;panels&quot;: [&#10;    {&#10;      &quot;datasource&quot;: {&#10;        &quot;type&quot;: &quot;loki&quot;,&#10;        &quot;uid&quot;: &quot;loki&quot;&#10;      },&#10;      &quot;gridPos&quot;: {&#10;        &quot;h&quot;: 8,&#10;        &quot;w&quot;: 24,&#10;        &quot;x&quot;: 0,&#10;        &quot;y&quot;: 0&#10;      },&#10;      &quot;id&quot;: 1,&#10;      &quot;options&quot;: {&#10;        &quot;dedupStrategy&quot;: &quot;none&quot;,&#10;        &quot;enableLogDetails&quot;: true,&#10;        &quot;prettifyLogMessage&quot;: false,&#10;        &quot;showCommonLabels&quot;: false,&#10;        &quot;showLabels&quot;: false,&#10;        &quot;showTime&quot;: true,&#10;        &quot;sortOrder&quot;: &quot;Descending&quot;,&#10;        &quot;wrapLogMessage&quot;: false&#10;      },&#10;      &quot;targets&quot;: [&#10;        {&#10;          &quot;datasource&quot;: {&#10;            &quot;type&quot;: &quot;loki&quot;,&#10;            &quot;uid&quot;: &quot;loki&quot;&#10;          },&#10;          &quot;editorMode&quot;: &quot;builder&quot;,&#10;          &quot;expr&quot;: &quot;{job=\&quot;varlogs\&quot;} |~ \&quot;(?i)\&quot;&quot;,&#10;          &quot;queryType&quot;: &quot;range&quot;,&#10;          &quot;refId&quot;: &quot;A&quot;&#10;        }&#10;      ],&#10;      &quot;title&quot;: &quot;Application Logs&quot;,&#10;      &quot;type&quot;: &quot;logs&quot;&#10;    }&#10;  ],&#10;  &quot;refresh&quot;: &quot;5s&quot;,&#10;  &quot;schemaVersion&quot;: 38,&#10;  &quot;style&quot;: &quot;dark&quot;,&#10;  &quot;tags&quot;: [],&#10;  &quot;templating&quot;: {&#10;    &quot;list&quot;: []&#10;  },&#10;  &quot;time&quot;: {&#10;    &quot;from&quot;: &quot;now-1h&quot;,&#10;    &quot;to&quot;: &quot;now&quot;&#10;  },&#10;  &quot;timepicker&quot;: {},&#10;  &quot;timezone&quot;: &quot;&quot;,&#10;  &quot;title&quot;: &quot;Application Logs Dashboard&quot;,&#10;  &quot;uid&quot;: &quot;application-logs&quot;,&#10;  &quot;version&quot;: 1,&#10;  &quot;weekStart&quot;: &quot;&quot;&#10;}" />
-            </PendingDiffInfo>
-          </value>
-        </entry>
-        <entry key="$PROJECT_DIR$/monitoring/grafana/provisioning/dashboards/default.yml">
-          <value>
-            <PendingDiffInfo>
-              <option name="filePath" value="$PROJECT_DIR$/monitoring/grafana/provisioning/dashboards/default.yml" />
-              <option name="updatedContent" value="apiVersion: 1&#10;&#10;providers:&#10;  - name: 'default'&#10;    orgId: 1&#10;    folder: ''&#10;    folderUid: ''&#10;    type: file&#10;    disableDeletion: false&#10;    updateIntervalSeconds: 10&#10;    allowUiUpdates: true&#10;    options:&#10;      path: /var/lib/grafana/dashboards&#10;      foldersFromFilesStructure: true" />
-            </PendingDiffInfo>
-          </value>
-        </entry>
-        <entry key="$PROJECT_DIR$/monitoring/grafana/provisioning/datasources/loki.yml">
-          <value>
-            <PendingDiffInfo>
-              <option name="filePath" value="$PROJECT_DIR$/monitoring/grafana/provisioning/datasources/loki.yml" />
-              <option name="updatedContent" value="apiVersion: 1&#10;&#10;datasources:&#10;  - name: Loki&#10;    type: loki&#10;    access: proxy&#10;    url: http://loki:3100&#10;    jsonData:&#10;      maxLines: 1000" />
-            </PendingDiffInfo>
-          </value>
-        </entry>
-        <entry key="$PROJECT_DIR$/monitoring/loki/loki-config.yml">
-          <value>
-            <PendingDiffInfo>
-              <option name="filePath" value="$PROJECT_DIR$/monitoring/loki/loki-config.yml" />
-              <option name="updatedContent" value="auth_enabled: false&#10;&#10;server:&#10;  http_listen_port: 3100&#10;  grpc_listen_port: 9095&#10;&#10;common:&#10;  path_prefix: /data/loki&#10;  storage:&#10;    filesystem:&#10;      chunks_directory: /data/loki/chunks&#10;      rules_directory: /data/loki/rules&#10;  ring:&#10;    kvstore:&#10;      store: memberlist&#10;&#10;memberlist:&#10;  join_members:&#10;    - localhost&#10;&#10;schema_config:&#10;  configs:&#10;    - from: 2023-01-01&#10;      store: boltdb-shipper&#10;      object_store: filesystem&#10;      schema: v11&#10;      index:&#10;        prefix: index_&#10;        period: 24h&#10;&#10;storage_config:&#10;  boltdb_shipper:&#10;    active_index_directory: /data/loki/index&#10;    cache_location: /data/loki/boltdb-cache&#10;    shared_store: filesystem&#10;&#10;compactor:&#10;  working_directory: /data/loki/compactor&#10;  shared_store: filesystem&#10;&#10;limits_config:&#10;  enforce_metric_name: false&#10;  reject_old_samples: true&#10;  reject_old_samples_max_age: 168h&#10;  max_entries_limit_per_query: 5000&#10;  max_global_streams_per_user: 5000&#10;  ingestion_rate_mb: 10&#10;  ingestion_burst_size_mb: 20&#10;  allow_structured_metadata: false&#10;&#10;table_manager:&#10;  retention_deletes_enabled: true&#10;  retention_period: 336h&#10;&#10;analytics:&#10;  reporting_enabled: false&#10;&#10;ruler:&#10;  storage:&#10;    type: local&#10;    local:&#10;      directory: /data/loki/rules" />
-            </PendingDiffInfo>
-          </value>
-        </entry>
         <entry key="$PROJECT_DIR$/monitoring/promtail/promtail-config.yml">
           <value>
             <PendingDiffInfo>

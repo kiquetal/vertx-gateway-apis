@@ -6,6 +6,7 @@ services:
     command: -config.file=/etc/loki/loki-config.yml
     ports:
       - "3100:3100"
+      - "9095:9095"  # Adding gRPC port
     volumes:
       - ./monitoring/loki:/etc/loki:ro
       - loki_data:/data/loki
