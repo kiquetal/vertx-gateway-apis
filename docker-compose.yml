@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   api-gateway:
-    image: ghcr.io/kiquetal/vertx-gateway-apis:amd64-20251028
+    image: ghcr.io/kiquetal/vertx-gateway-apis:amd64-20251029
+    volumes:
+      - ./logs:/app/logs
     ports:
       - "8080:8080"  # Application port
     environment:
