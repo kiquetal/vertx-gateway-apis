@@ -57,3 +57,4 @@ volumes:
   grafana_data:
   app_logs:
     driver: local
+    name: external_app_logs_volume
