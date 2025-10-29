@@ -20,9 +20,11 @@ RUN addgroup --system --gid 1001 vertx && \
 
 # Copy the fat JAR
 COPY --from=builder /build/target/*-fat.jar app.jar
+COPY --from=builder /build/src/main/docker/entrypoint.sh entrypoint.sh
 
-# Set permissions
-RUN chown -R vertx:vertx /app
+RUN mkdir /app/logs && \
+    chmod +x /app/entrypoint.sh && \
+    chown vertx:vertx /app/logs
 
 # Switch to non-root user
 USER vertx
@@ -34,11 +36,13 @@ ENV SHUTDOWN_TIMEOUT_MS=30000
 # Expose application port
 EXPOSE 8080
 EXPOSE 8082
+
+ENTRYPOINT ["/app/entrypoint.sh"]
 # Set the entry point with Java 21 optimizations
-ENTRYPOINT ["java", \
+CMD ["java", \
     "--enable-preview", \
     "--enable-native-access=ALL-UNNAMED", \
     "-XX:+UseZGC", \
     "-XX:+ZGenerational", \
     "-Djdk.virtualThreadScheduler.parallelism=16", \
-    "-jar", "app.jar"]
+    "-jar", "/app/app.jar"]
