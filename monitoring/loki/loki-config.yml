@@ -10,13 +10,10 @@ common:
     filesystem:
       chunks_directory: /data/loki/chunks
       rules_directory: /data/loki/rules
+  replication_factor: 1
   ring:
     kvstore:
-      store: memberlist
-
-memberlist:
-  join_members:
-    - localhost
+      store: inmemory
 
 schema_config:
   configs:
