@@ -9,6 +9,8 @@ import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -18,6 +20,7 @@ public class AdminServiceHandler {
     private final ServiceRegistry registry;
     private final Map<String, TokenBucket> limiters;
 
+    private Logger logger = LoggerFactory.getLogger(AdminServiceHandler.class);
     public AdminServiceHandler(ServiceRegistry registry, Map<String, TokenBucket> limiters) {
         this.registry = registry;
         this.limiters = limiters;
@@ -52,6 +55,8 @@ public class AdminServiceHandler {
 
     public void handleGetService(RoutingContext ctx) {
         String id = ctx.pathParam("id");
+        logger.info("Fetching service with id: {}", id);
+
         registry.getById(id)
                 .ifPresentOrElse(sd -> ctx.response()
                         .putHeader(HttpHeaders.CONTENT_TYPE, "application/json")
