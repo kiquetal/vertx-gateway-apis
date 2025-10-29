@@ -3,7 +3,7 @@
     <Properties>
         <Property name="APP_LEVEL">${env:LOG_LEVEL_APP:-INFO}</Property>
         <Property name="OTHER_LEVEL">${env:LOG_LEVEL:-WARN}</Property>
-        <Property name="LOG_PATH">${env:LOG_PATH:-logs}</Property>
+        <Property name="LOG_PATH_DIR">${env:LOG_PATH:-logs}</Property>
     </Properties>
 
     <Appenders>
@@ -16,8 +16,8 @@
         </Console>
 
         <RollingFile name="RollingFile"
-                     fileName="${LOG_PATH}/application.log"
-                     filePattern="${LOG_PATH}/application-%d{yyyy-MM-dd}-%i.log.gz">
+                     fileName="${LOG_PATH_DIR}/application.log"
+                     filePattern="${LOG_PATH_DIR}/application-%d{yyyy-MM-dd}-%i.log.gz">
             <JsonTemplateLayout eventTemplateUri="classpath:JsonLayout.json">
                 <EventTemplateAdditionalField key="timestamp" value="$${date:yyyy-MM-dd HH:mm:ss.SSS}"/>
             </JsonTemplateLayout>
