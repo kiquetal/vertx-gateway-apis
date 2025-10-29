@@ -4,7 +4,7 @@ services:
   api-gateway:
     image: ghcr.io/kiquetal/vertx-gateway-apis:amd64-20251029
     volumes:
-      - ./logs:/app/logs
+      - app_logs:/app/logs
     ports:
       - "8080:8080"  # Application port
     environment:
@@ -47,7 +47,9 @@ services:
 networks:
   monitoring:
     driver: bridge
+    name: external_gateway_network
 
 volumes:
   prometheus_data:
   grafana_data:
+  app_logs:

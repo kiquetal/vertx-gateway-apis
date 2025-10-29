@@ -1,1 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Properties>
+        <Property name="APP_LEVEL">${env:LOG_LEVEL_APP:-INFO}</Property>
+        <Property name="OTHER_LEVEL">${env:LOG_LEVEL:-WARN}</Property>
+        <Property name="LOG_PATH">${env:LOG_PATH:-logs}</Property>
+    </Properties>
 
+    <Appenders>
+        -
+        <Console name="Console" target="SYSTEM_OUT">
+
+            <JsonTemplateLayout eventTemplateUri="classpath:JsonLayout.json">
+
+            </JsonTemplateLayout>
+        </Console>
+
+        <RollingFile name="RollingFile"
+                     fileName="${LOG_PATH}/application.log"
+                     filePattern="${LOG_PATH}/application-%d{yyyy-MM-dd}-%i.log.gz">
+            <JsonTemplateLayout eventTemplateUri="classpath:JsonLayout.json">
+                <EventTemplateAdditionalField key="timestamp" value="$${date:yyyy-MM-dd HH:mm:ss.SSS}"/>
+            </JsonTemplateLayout>
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="10 MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="10"/>
+        </RollingFile>
+    </Appenders>
+
+    <Loggers>
+        <Logger name="com.cresterida.gateway" level="${APP_LEVEL}" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+        </Logger>
+
+        <Root level="${OTHER_LEVEL}">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+        </Root>
+    </Loggers>
+</Configuration>
