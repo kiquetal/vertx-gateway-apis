@@ -1,5 +1,40 @@
 # Logging Architecture for Vertx Gateway APIs
 
+## System Architecture Diagram
+
+```ascii
+Docker Environment:
++------------------+     writes      +-----------------+     reads      +------------------+     pushes     +-----------------+
+|  Vertx Gateway   |--------------->|  Named Volume   |<--------------|    Promtail      |--------------->|      Loki       |
+|   Application    |   logs to      |   (app_logs)    |   logs from   |   (Log Agent)    |    logs to    |  (Log Storage)  |
++------------------+  /app/logs/    +-----------------+  /var/log/vertx +------------------+              +-----------------+
+                                                                                                                ^
+                                                                                                                |
+                                                                                                          queries|
+                                                                                                                |
+                                                                                                         +------------------+
+                                                                                                         |    Grafana      |
+                                                                                                         |  (Visualization) |
+                                                                                                         +------------------+
+
+Kubernetes Environment:
++-----------------------------------------------+
+|                     Pod                        |
+|  +---------------+        +---------------+    |            +-----------------+
+|  | Vertx Gateway |  writes | Promtail     |    |   pushes   |      Loki       |
+|  | Application   |-------->| (Log Agent)  |------------------>  (Log Storage)  |
+|  |              |  logs   |              |    |   logs     |                 |
+|  +---------------+        +---------------+    |            +-----------------+
+|         |                       ^             |                     ^
+|         |                       |             |                     |
+|         v                       |             |               queries|
+|  +-----------------+           |             |                     |
+|  |   emptyDir     |           |             |            +------------------+
+|  |    Volume      |-----------              |            |    Grafana      |
+|  +-----------------+                         |            |  (Visualization) |
++-----------------------------------------------+            +------------------+
+```
+
 This document explains how logging is implemented in both Docker and Kubernetes environments.
 
 ## Application Logging Configuration
