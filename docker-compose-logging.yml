@@ -26,11 +26,24 @@ services:
     volumes:
       - ./monitoring/agent:/etc/agent
       - external_app_logs_volume:/var/log/vertx:ro
-    command: run --server.http.listen-addr=0.0.0.0:12345 /etc/agent/config.river
+
+    # --- THIS IS THE FIX ---
+    # Use the list (array) format to pass arguments
+    # to the image's default ENTRYPOINT (/bin/agent)
+    command:
+    - "run"
+    - "--server.http.listen-addr=0.0.0.0:12345"
+    - "/etc/agent/config.river"
+
+
     ports:
       - "12345:12345"
     depends_on:
       - loki
+    # You will also need to add your agent to the network
+    # so it can see Loki
+    networks:
+      - external_gateway_network
 
   grafana:
     image: grafana/grafana:latest

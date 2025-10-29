@@ -1,0 +1,21 @@
+logging {
+    level  = "info"
+    format = "logfmt"
+}
+
+loki.source.file "vertx_logs" {
+    targets    = [
+        {
+            __path__ = "/var/log/vertx/application*.log",
+            job = "vertx",
+            app = "gateway"
+        },
+    ]
+    forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+    endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
+    }
+}
