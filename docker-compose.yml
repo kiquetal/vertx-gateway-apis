@@ -2,15 +2,12 @@ version: '3.8'
 
 services:
   api-gateway:
-    image: ghcr.io/kiquetal/vertx-gateway-apis:latest
+    image: ghcr.io/kiquetal/vertx-gateway-apis:amd64-20251028
     ports:
       - "8080:8080"  # Application port
-      - "8081:8081"  # JMX Exporter metrics
     environment:
       - LOG_LEVEL=INFO
-      - JAVA_OPTS=-javaagent:/app/jmx_prometheus_javaagent.jar=8081:/app/config/jmx_prometheus_config.yaml
-    volumes:
-      - ./monitoring/config:/app/config
+      - LOG_LEVEL_APP=DEBUG
     networks:
       - monitoring
 

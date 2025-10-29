@@ -4,18 +4,10 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: 'vertx-application'
+  - job_name: 'vertx-gateway-app'
     metrics_path: '/metrics'
     static_configs:
       - targets: ['api-gateway:8080']
         labels:
           application: 'vertx-gateway'
           type: 'application'
-
-  - job_name: 'vertx-jmx'
-    metrics_path: '/metrics'
-    static_configs:
-      - targets: ['api-gateway:8081']
-        labels:
-          application: 'vertx-gateway'
-          type: 'jmx'
