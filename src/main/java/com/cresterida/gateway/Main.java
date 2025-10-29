@@ -63,7 +63,7 @@ public class Main {
 
 
             setupShutdownHook(vertx);
-        printLogDetails();
+            printLogDetails();
 
     }
     private static void setupShutdownHook(Vertx vertx) {
