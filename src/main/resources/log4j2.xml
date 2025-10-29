@@ -5,23 +5,38 @@
         <Property name="APP_LEVEL">${env:LOG_LEVEL_APP:-INFO}</Property>
         <!-- Everything else log level, default to WARN -->
         <Property name="OTHER_LEVEL">${env:LOG_LEVEL:-WARN}</Property>
+        <!-- Log file location -->
+        <Property name="LOG_PATH">logs</Property>
     </Properties>
 
     <Appenders>
         <Console name="Console" target="SYSTEM_OUT">
             <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
         </Console>
+
+        <RollingFile name="RollingFile"
+                     fileName="${LOG_PATH}/application.log"
+                     filePattern="${LOG_PATH}/application-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="10 MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="10"/>
+        </RollingFile>
     </Appenders>
 
     <Loggers>
         <!-- Your app uses LOG_LEVEL_APP -->
         <Logger name="com.cresterida.gateway" level="${APP_LEVEL}" additivity="false">
             <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
         </Logger>
 
         <!-- Everything else uses LOG_LEVEL -->
         <Root level="${OTHER_LEVEL}">
             <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
         </Root>
     </Loggers>
 </Configuration>
