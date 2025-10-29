@@ -1,9 +1,7 @@
 {
   "timestamp": {
     "$resolver": "timestamp",
-    "pattern": {
-      "format": "yyyy-MM-dd HH:mm:ss.SSS"
-    }
+    "pattern": "yyyy-MM-dd HH:mm:ss.SSS"
   },
   "level": {
     "$resolver": "level",
@@ -23,30 +21,6 @@
   },
   "exception": {
     "$resolver": "exception",
-    "field": "stackTrace",
-    "stackTrace": {
-      "stringified": true
-    }
-  },
-  "mdc": {
-    "$resolver": "mdc"
-  },
-  "source": {
-    "class": {
-      "$resolver": "source",
-      "field": "className"
-    },
-    "method": {
-      "$resolver": "source",
-      "field": "methodName"
-    },
-    "file": {
-      "$resolver": "source",
-      "field": "fileName"
-    },
-    "line": {
-      "$resolver": "source",
-      "field": "lineNumber"
-    }
+    "field": "message"
   }
 }

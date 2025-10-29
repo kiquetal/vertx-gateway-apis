@@ -2,14 +2,17 @@ version: '3.8'
 
 services:
   api-gateway:
-    image: ghcr.io/kiquetal/vertx-gateway-apis:amd64-20251029
+    image:  ghcr.io/kiquetal/vertx-gateway-apis:amd64-20251029
+    pull_policy: always
     volumes:
       - app_logs:/app/logs
+
     ports:
       - "8080:8080"  # Application port
     environment:
       - LOG_LEVEL=INFO
       - LOG_LEVEL_APP=DEBUG
+      - LOG_PATH=/app/logs
     networks:
       - monitoring
 
@@ -53,3 +56,4 @@ volumes:
   prometheus_data:
   grafana_data:
   app_logs:
+    driver: local

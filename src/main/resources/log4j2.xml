@@ -5,12 +5,13 @@
         <Property name="OTHER_LEVEL">${env:LOG_LEVEL:-WARN}</Property>
         <Property name="LOG_PATH_DIR">${env:LOG_PATH:-logs}</Property>
     </Properties>
-
     <Appenders>
-        -
+
         <Console name="Console" target="SYSTEM_OUT">
 
-            <JsonTemplateLayout eventTemplateUri="classpath:JsonLayout.json">
+            <JsonTemplateLayout
+
+                    eventTemplateUri="classpath:JsonLayout.json">
 
             </JsonTemplateLayout>
         </Console>
