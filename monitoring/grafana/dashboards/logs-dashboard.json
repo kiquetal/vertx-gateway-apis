@@ -1,4 +1,4 @@
- {
+{
   "annotations": {
     "list": [
       {
@@ -20,12 +20,43 @@
   "graphTooltip": 0,
   "id": 1,
   "links": [],
-  "liveNow": false,
   "panels": [
     {
       "datasource": {
-        "type": "loki",
-        "uid": "loki"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
       },
       "gridPos": {
         "h": 8,
@@ -35,34 +66,33 @@
       },
       "id": 1,
       "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true,
-        "prettifyLogMessage": false,
-        "showCommonLabels": false,
-        "showLabels": false,
-        "showTime": true,
-        "sortOrder": "Descending",
-        "wrapLogMessage": false
+        "cellHeight": "sm",
+        "showHeader": true
       },
+      "pluginVersion": "12.2.1",
       "targets": [
         {
           "datasource": {
             "type": "loki",
             "uid": "loki"
           },
-          "editorMode": "builder",
-          "expr": "{job=\"varlogs\"} |~ \"(?i)\"",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum by (endpoint, method) (http_requests_total{job=\"vertx-gateway-app\"})",
+          "format": "table",
+          "instant": true,
           "queryType": "range",
+          "range": false,
           "refId": "A"
         }
       ],
       "title": "Application Logs",
-      "type": "logs"
+      "type": "table"
     }
   ],
+  "preload": false,
   "refresh": "5s",
-  "schemaVersion": 38,
-  "style": "dark",
+  "schemaVersion": 42,
   "tags": [],
   "templating": {
     "list": []
@@ -75,7 +105,6 @@
   "timezone": "",
   "title": "Application Logs Dashboard",
   "uid": "application-logs",
-  "version": 1,
-  "weekStart": ""
+  "version": 1
 }
-
+}
