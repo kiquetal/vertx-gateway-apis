@@ -84,11 +84,10 @@ public class ApiGatewayVerticle extends AbstractVerticle {
     router.get("/metrics").handler(PrometheusScrapingHandler.create());
 
     // Admin API routes - these should match before the catch-all proxy
-    router.post("/admin/services").handler(adminHandler::handleAddService);
-    router.get("/admin/services").handler(CounterMetrics.withMetrics(adminHandler::handleListServices));
-    router.get("/admin/services/:id").handler(CounterMetrics.withMetrics(adminHandler::handleGetService));
-    router.put("/admin/services/:id").handler(adminHandler::handleUpdateService);
-    router.delete("/admin/services/:id").handler(adminHandler::handleDeleteService);
+
+    //Register the routes in the AdminServiceHandler
+
+    adminHandler.registerRoutes(router);
 
     // Test route for VehicleWorker
     router.post("/test/vehicle").handler(ctx -> {

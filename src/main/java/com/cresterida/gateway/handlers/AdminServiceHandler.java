@@ -8,6 +8,7 @@ import io.vertx.core.Handler;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,6 +102,17 @@ public class AdminServiceHandler {
         ctx.response().setStatusCode(status)
                 .putHeader(HttpHeaders.CONTENT_TYPE, "application/json")
                 .end(err.encode());
+    }
+
+    public  void registerRoutes(Router router)
+    {
+        router.post("/admin/services").handler(this::handleListServices);
+        router.get("/admin/services").handler(CounterMetrics.withMetrics(this::handleListServices));
+        router.get("/admin/services/:id").handler(CounterMetrics.withMetrics(this::handleGetService));
+        router.put("/admin/services/:id").handler(this::handleUpdateService);
+        router.delete("/admin/services/:id").handler(this::handleDeleteService);
+
+
     }
 }
 
