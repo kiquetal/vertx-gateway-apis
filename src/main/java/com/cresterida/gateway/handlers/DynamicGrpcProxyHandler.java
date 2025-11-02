@@ -4,13 +4,11 @@ import com.cresterida.gateway.model.ServiceDefinition;
 import com.cresterida.gateway.model.EndpointDefinition;
 import com.cresterida.gateway.util.DynamicGrpcInvoker;
 import com.github.os72.protocjar.Protoc;
+import com.google.protobuf.*;
+import com.google.protobuf.util.JsonFormat;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
-import com.google.protobuf.DynamicMessage;
-import com.google.protobuf.DescriptorProtos;
-import com.google.protobuf.Descriptors;
-import com.google.protobuf.TextFormat;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import io.vertx.core.Vertx;
@@ -173,6 +171,8 @@ public class DynamicGrpcProxyHandler implements Handler<RoutingContext> {
                 return;
             }
 
+
+
             // 9. Find the ServiceDescriptor and MethodDescriptor
             Descriptors.ServiceDescriptor serviceDescriptor = mainFileDescriptor.getServices().stream()
                     .filter(s -> s.getFullName().equals(finalFullServiceName))
@@ -201,17 +201,16 @@ public class DynamicGrpcProxyHandler implements Handler<RoutingContext> {
             }
 
             DynamicMessage.Builder requestBuilder = DynamicMessage.newBuilder(inputDescriptor);
-            // Apply input field mappings
-            for (Map.Entry<String, String> mapping : endpoint.getInputMapping().entrySet()) {
-                String fieldName = mapping.getKey();
-                String jsonPath = mapping.getValue();
-
-                // For now, simple direct mapping assuming jsonPath is just the field name
-                Descriptors.FieldDescriptor field = inputDescriptor.findFieldByName(fieldName);
-                if (field != null && requestBody.containsKey(fieldName)) {
-                    Object value = requestBody.getValue(fieldName);
-                    requestBuilder.setField(field, value);
-                }
+            try {
+                // Use JsonFormat to parse the *entire* JSON body into the Protobuf message
+                // This handles all type conversions, nested objects, and field names.
+                JsonFormat.parser()
+                        .ignoringUnknownFields()
+                        .merge(requestBody.encode(), requestBuilder);
+            } catch (InvalidProtocolBufferException e) {
+                LOGGER.warn("Invalid JSON body for request: {}", e.getMessage());
+                handleError(ctx, 400, "Invalid JSON body for request: " + e.getMessage());
+                return;
             }
 
             // Make the gRPC call using DynamicGrpcInvoker

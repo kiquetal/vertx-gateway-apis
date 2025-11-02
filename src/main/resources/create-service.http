@@ -23,12 +23,8 @@ Content-Type: application/json
       "methodName": "SayHello",
       "inputMessage": "HelloRequest",
       "outputMessage": "HelloReply",
-      "inputMapping": {
-        "name": "$.name"
-      },
-      "outputMapping": {
-        "message": "$.message"
-      }
+      "inputMapping": {},
+      "outputMapping": {}
     }
   ]
 }
