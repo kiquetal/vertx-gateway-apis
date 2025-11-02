@@ -68,16 +68,36 @@ public class DynamicGrpcInvoker {
 
             Descriptors.Descriptor inputDescriptor = methodDesc.getInputType();
 
+            // Validate request fields against proto definition first
+            for (String fieldName : requestBody.fieldNames()) {
+                Descriptors.FieldDescriptor field = inputDescriptor.findFieldByName(fieldName);
+                if (field == null) {
+                    String errorMsg = String.format(
+                        "Invalid field '%s' in request. Available fields are: %s",
+                        fieldName,
+                        inputDescriptor.getFields().stream()
+                            .map(Descriptors.FieldDescriptor::getName)
+                            .toList()
+                    );
+                    LOGGER.error(errorMsg);
+                    return Future.failedFuture(errorMsg);
+                }
+            }
+
             DynamicMessage.Builder requestBuilder = DynamicMessage.newBuilder(inputDescriptor);
             try {
-                // Use JsonFormat to parse the *entire* JSON body into the Protobuf message
-                // This handles all type conversions, nested objects, and field names.
+                // Use JsonFormat to parse the validated JSON body into the Protobuf message
                 JsonFormat.parser()
-                        .ignoringUnknownFields()
+                        .ignoringUnknownFields() // Now we want to fail on unknown fields
                         .merge(requestBody.encode(), requestBuilder);
             } catch (InvalidProtocolBufferException e) {
-                LOGGER.error("Invalid JSON body for request: {}", e.getMessage());
-                return Future.failedFuture("Invalid JSON body for request: " + e.getMessage());
+                String errorMsg = String.format(
+                    "Invalid request format: %s. Expected format matches proto definition: %s",
+                    e.getMessage(),
+                    inputDescriptor.toProto()
+                );
+                LOGGER.error(errorMsg);
+                return Future.failedFuture(errorMsg);
             }
 
             DynamicMessage request = requestBuilder.build();
@@ -109,8 +129,8 @@ public class DynamicGrpcInvoker {
                     }
 
                 } catch (Exception e) {
-                    LOGGER.error("Error while processing request", e);
-                    return Future.<JsonObject>failedFuture(e);
+                    handleGrpcError(e, promise);
+                    return null;
                 } finally {
                     // Ensure channel is shutdown
                     shutdownChannel(channel);
@@ -119,7 +139,7 @@ public class DynamicGrpcInvoker {
             });
 
         } catch (Exception e) {
-            promise.fail(e);
+            handleGrpcError(e, promise);
         }
 
         return promise.future();
@@ -128,7 +148,43 @@ public class DynamicGrpcInvoker {
     private ManagedChannel createChannel(ServiceInstance instance) {
         return ManagedChannelBuilder.forAddress(instance.getHost(), instance.getPort())
             .usePlaintext() // For development. Use TLS in production
+            .keepAliveTimeout(10, TimeUnit.SECONDS)
+            .keepAliveWithoutCalls(true)
+            .idleTimeout(defaultTimeout, TimeUnit.SECONDS)
+            .maxInboundMessageSize(10 * 1024 * 1024) // 10MB
+            .maxRetryAttempts(1)
+            .enableRetry()
             .build();
+    }
+
+    private void handleGrpcError(Throwable error, Promise<JsonObject> promise) {
+        String errorMessage;
+        if (error instanceof io.grpc.StatusRuntimeException) {
+            io.grpc.StatusRuntimeException statusError = (io.grpc.StatusRuntimeException) error;
+            switch (statusError.getStatus().getCode()) {
+                case UNAVAILABLE:
+                    errorMessage = "Service is currently unavailable. Please try again later.";
+                    break;
+                case DEADLINE_EXCEEDED:
+                    errorMessage = "Request timed out. Please try again.";
+                    break;
+                case UNIMPLEMENTED:
+                    errorMessage = "The requested operation is not implemented.";
+                    break;
+                case INVALID_ARGUMENT:
+                    errorMessage = "Invalid request: " + statusError.getStatus().getDescription();
+                    break;
+                default:
+                    errorMessage = "gRPC error: " + statusError.getStatus().getCode() + " - " + statusError.getStatus().getDescription();
+            }
+        } else if (error instanceof java.util.concurrent.TimeoutException
+                  || error instanceof io.netty.handler.timeout.ReadTimeoutException) {
+            errorMessage = "Request timed out while waiting for response.";
+        } else {
+            errorMessage = "Internal error: " + error.getMessage();
+        }
+        LOGGER.error("gRPC call failed: {}", errorMessage, error);
+        promise.fail(errorMessage);
     }
 
     private static class DescriptorHolder {
