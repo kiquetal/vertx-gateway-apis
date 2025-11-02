@@ -2,7 +2,10 @@ package com.cresterida.gateway.util;
 
 import com.cresterida.gateway.model.ServiceDefinition;
 import com.cresterida.gateway.model.ServiceInstance;
-import com.google.protobuf.*;
+import com.google.protobuf.Descriptors;
+import com.google.protobuf.DynamicMessage;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.Message;
 import com.google.protobuf.util.JsonFormat;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -14,8 +17,6 @@ import io.vertx.core.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 
 public class DynamicGrpcInvoker {
@@ -29,7 +30,7 @@ public class DynamicGrpcInvoker {
         this.defaultTimeout = defaultTimeoutSeconds;
     }
 
-    public Future<JsonObject> invoke(ServiceDefinition service, String methodName, DynamicMessage request) {
+    public Future<JsonObject> invoke(ServiceDefinition service, String methodName, JsonObject requestBody) {
         Promise<JsonObject> promise = Promise.promise();
 
         try {
@@ -42,12 +43,44 @@ public class DynamicGrpcInvoker {
             // Create and configure channel
             ManagedChannel channel = createChannel(instance);
 
-            // Create method descriptor
-            MethodDescriptor<Message, Message> methodDescriptor = createMethodDescriptor(
+            // Create method descriptor and get descriptors
+            String fullServiceName = service.getPackageName() + "." + service.getName();
+            DescriptorHolder descriptorHolder = createMethodDescriptor(
                 service.getProtoDefinition(),
-                service.getPackageName() + "." + service.getName(),
+                fullServiceName,
                 methodName
             );
+
+            MethodDescriptor<Message, Message> methodDescriptor = descriptorHolder.methodDescriptor;
+            Descriptors.FileDescriptor fileDescriptor = descriptorHolder.fileDescriptor;
+
+            // Get input descriptor from method
+            Descriptors.ServiceDescriptor serviceDescriptor = fileDescriptor.findServiceByName(
+                fullServiceName.substring(fullServiceName.lastIndexOf('.') + 1));
+            if (serviceDescriptor == null) {
+                return Future.failedFuture("Service not found: " + fullServiceName);
+            }
+
+            Descriptors.MethodDescriptor methodDesc = serviceDescriptor.findMethodByName(methodName);
+            if (methodDesc == null) {
+                return Future.failedFuture("Method not found: " + methodName);
+            }
+
+            Descriptors.Descriptor inputDescriptor = methodDesc.getInputType();
+
+            DynamicMessage.Builder requestBuilder = DynamicMessage.newBuilder(inputDescriptor);
+            try {
+                // Use JsonFormat to parse the *entire* JSON body into the Protobuf message
+                // This handles all type conversions, nested objects, and field names.
+                JsonFormat.parser()
+                        .ignoringUnknownFields()
+                        .merge(requestBody.encode(), requestBuilder);
+            } catch (InvalidProtocolBufferException e) {
+                LOGGER.error("Invalid JSON body for request: {}", e.getMessage());
+                return Future.failedFuture("Invalid JSON body for request: " + e.getMessage());
+            }
+
+            DynamicMessage request = requestBuilder.build();
 
             // Make the gRPC call
             vertx.executeBlocking(() -> {
@@ -61,15 +94,15 @@ public class DynamicGrpcInvoker {
 
                     // Convert response to JsonObject
                     try {
-                        // 1. Use the printer to convert the protobuf message to a valid JSON string
+                        // Use the printer to convert the protobuf message to a valid JSON string
                         String jsonResponseString = JsonFormat.printer()
-                                .preservingProtoFieldNames() // or not, your choice
+                                .preservingProtoFieldNames()
                                 .print(response);
 
-                        // 2. Parse that valid JSON string into a Vert.x JsonObject
+                        // Parse that valid JSON string into a Vert.x JsonObject
                         JsonObject jsonResponse = new JsonObject(jsonResponseString);
 
-                        // 3. Complete the promise with the JsonObject
+                        // Complete the promise with the JsonObject
                         promise.complete(jsonResponse);
                     } catch (InvalidProtocolBufferException e) {
                         promise.fail(e);
@@ -98,68 +131,53 @@ public class DynamicGrpcInvoker {
             .build();
     }
 
-    private MethodDescriptor<Message, Message> createMethodDescriptor(
+    private static class DescriptorHolder {
+        final MethodDescriptor<Message, Message> methodDescriptor;
+        final Descriptors.FileDescriptor fileDescriptor;
+
+        DescriptorHolder(MethodDescriptor<Message, Message> methodDescriptor, Descriptors.FileDescriptor fileDescriptor) {
+            this.methodDescriptor = methodDescriptor;
+            this.fileDescriptor = fileDescriptor;
+        }
+    }
+
+    private DescriptorHolder createMethodDescriptor(
             String protoDefinition,
             String serviceName,
             String methodName) throws Exception {
 
-        // Create temporary proto file
-        Path tempProtoFile = Files.createTempFile("temp", ".proto");
-        Files.writeString(tempProtoFile, protoDefinition);
+        // Use the shared builder to get the descriptors
+        ProtoDescriptorBuilder.BuildResult buildResult = ProtoDescriptorBuilder.buildFromProtoDefinition(
+            serviceName.replaceAll("[^a-zA-Z0-9]", "_"), // Create a safe file prefix from service name
+            protoDefinition
+        );
 
-        // Generate descriptor set
-        Path descriptorFile = Files.createTempFile("descriptor", ".desc");
-        String[] protoc_args = new String[]{
-            "--proto_path=" + tempProtoFile.getParent(),
-            "--descriptor_set_out=" + descriptorFile.toString(),
-            tempProtoFile.toString()
-        };
+        Descriptors.FileDescriptor fileDescriptor = buildResult.getFileDescriptor();
 
-        try {
-            int exitCode = com.github.os72.protocjar.Protoc.runProtoc(protoc_args);
-            if (exitCode != 0) {
-                throw new RuntimeException("protoc failed with exit code: " + exitCode);
-            }
+        // Get the service descriptor
+        Descriptors.ServiceDescriptor serviceDescriptor =
+            fileDescriptor.findServiceByName(serviceName.substring(serviceName.lastIndexOf('.') + 1));
 
-            // Read and parse the descriptor set
-            byte[] descriptorBytes = Files.readAllBytes(descriptorFile);
-            DescriptorProtos.FileDescriptorSet descriptorSet =
-                DescriptorProtos.FileDescriptorSet.parseFrom(descriptorBytes);
-
-            // Get the service descriptor
-            Descriptors.FileDescriptor fileDescriptor =
-                Descriptors.FileDescriptor.buildFrom(
-                    descriptorSet.getFile(0),
-                    new Descriptors.FileDescriptor[]{}
-                );
-
-            Descriptors.ServiceDescriptor serviceDescriptor =
-                fileDescriptor.findServiceByName(serviceName.substring(serviceName.lastIndexOf('.') + 1));
-
-            if (serviceDescriptor == null) {
-                throw new RuntimeException("Service not found: " + serviceName);
-            }
-
-            Descriptors.MethodDescriptor methodDesc = serviceDescriptor.findMethodByName(methodName);
-            if (methodDesc == null) {
-                throw new RuntimeException("Method not found: " + methodName);
-            }
-
-            // Create the gRPC method descriptor
-            return MethodDescriptor.<Message, Message>newBuilder()
-                .setType(MethodDescriptor.MethodType.UNARY)
-                .setFullMethodName(
-                    MethodDescriptor.generateFullMethodName(serviceName, methodName)
-                )
-                .setRequestMarshaller(new DynamicMessageMarshaller(methodDesc.getInputType()))
-                .setResponseMarshaller(new DynamicMessageMarshaller(methodDesc.getOutputType()))
-                .build();
-
-        } finally {
-            // Cleanup temporary files
-            Files.deleteIfExists(tempProtoFile);
-            Files.deleteIfExists(descriptorFile);
+        if (serviceDescriptor == null) {
+            throw new RuntimeException("Service not found: " + serviceName);
         }
+
+        Descriptors.MethodDescriptor methodDesc = serviceDescriptor.findMethodByName(methodName);
+        if (methodDesc == null) {
+            throw new RuntimeException("Method not found: " + methodName);
+        }
+
+        // Create the gRPC method descriptor
+        MethodDescriptor<Message, Message> methodDescriptor = MethodDescriptor.<Message, Message>newBuilder()
+            .setType(MethodDescriptor.MethodType.UNARY)
+            .setFullMethodName(
+                MethodDescriptor.generateFullMethodName(serviceName, methodName)
+            )
+            .setRequestMarshaller(new DynamicMessageMarshaller(methodDesc.getInputType()))
+            .setResponseMarshaller(new DynamicMessageMarshaller(methodDesc.getOutputType()))
+            .build();
+
+        return new DescriptorHolder(methodDescriptor, fileDescriptor);
     }
 
     private void shutdownChannel(ManagedChannel channel) {
@@ -174,12 +192,6 @@ public class DynamicGrpcInvoker {
         }
     }
 
-    private JsonObject protoMessageToJson(Message message) {
-        // Convert proto message to JsonObject
-        // This is a simplified version. You might want to use a more sophisticated
-        // conversion based on your needs
-        return new JsonObject(message.toString());
-    }
 
 
 }

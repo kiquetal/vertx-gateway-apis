@@ -3,12 +3,8 @@ package com.cresterida.gateway.handlers;
 import com.cresterida.gateway.model.EndpointDefinition;
 import com.cresterida.gateway.model.ServiceDefinition;
 import com.cresterida.gateway.util.DynamicGrpcInvoker;
-import com.github.os72.protocjar.Protoc;
+import com.cresterida.gateway.util.ProtoDescriptorBuilder;
 import com.google.protobuf.Descriptors;
-import com.google.protobuf.DynamicMessage;
-import com.google.protobuf.DescriptorProtos;
-import com.google.protobuf.InvalidProtocolBufferException;
-import com.google.protobuf.util.JsonFormat;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
@@ -16,10 +12,7 @@ import io.vertx.ext.web.RoutingContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.*;
+import java.util.Map;
 
 public class DynamicGrpcProxyHandler implements Handler<RoutingContext> {
     private static final Logger LOGGER = LogManager.getLogger(DynamicGrpcProxyHandler.class);
@@ -54,9 +47,6 @@ public class DynamicGrpcProxyHandler implements Handler<RoutingContext> {
             return;
         }
 
-        // Paths for temp files
-        Path tempProtoFile;
-        Path tempDescFile;
         try {
             // Extract method name from path
             String path = ctx.request().path();
@@ -70,159 +60,36 @@ public class DynamicGrpcProxyHandler implements Handler<RoutingContext> {
                 return;
             }
 
-            String rawProto = sd.getProtoDefinition();
-            String serviceName = sd.getName(); // e.g., "Greeter"
-            String fullServiceName = serviceName;
-            if (sd.getPackageName() != null && !sd.getPackageName().isEmpty()) {
-                fullServiceName = sd.getPackageName() + "." + serviceName; // e.g., "helloworld.Greeter"
-            }
+            // Use the shared builder to get the descriptors
+            String serviceName = sd.getName();
+            ProtoDescriptorBuilder.BuildResult buildResult = ProtoDescriptorBuilder.buildFromProtoDefinition(
+                sd.getId(),
+                sd.getProtoDefinition()
+            );
 
-            // 2. Create temporary files
-            tempProtoFile = Files.createTempFile(sd.getId(), ".proto");
-            tempDescFile = Files.createTempFile(sd.getId(), ".desc");
-            Files.writeString(tempProtoFile, rawProto, StandardCharsets.UTF_8);
+            Descriptors.FileDescriptor mainFileDescriptor = buildResult.getFileDescriptor();
 
-            // 3. Prepare 'protoc' compiler arguments
-            String[] protocArgs = {
-                    // Include path for the temp file
-                    "-I=" + tempProtoFile.getParent().toAbsolutePath(),
-                    // Include standard Google types (like Timestamp)
-                    "--include_imports",
-                    // Output path for the binary descriptor set
-                    "--descriptor_set_out=" + tempDescFile.toAbsolutePath(),
-                    // The proto file to compile
-                    tempProtoFile.toAbsolutePath().toString()
-            };
-
-            // 4. Run the compiler using protoc-jar
-            LOGGER.debug("Running protoc compiler...");
-            int exitCode = Protoc.runProtoc(protocArgs);
-            if (exitCode != 0) {
-                LOGGER.error("protoc compiler failed with exit code: {}", exitCode);
-                handleError(ctx, HTTP_SERVER_ERROR, "protoc compiler failed. Exit code: " + exitCode);
-                return;
-            }
-
-            // 5. Read the generated .desc file
-            byte[] descBytes = Files.readAllBytes(tempDescFile);
-            if (descBytes.length == 0) {
-                LOGGER.error("protoc produced an empty descriptor file.");
-                handleError(ctx, 500, "protoc produced an empty descriptor file.");
-                return;
-            }
-
-            // 6. Parse the .desc bytes into a FileDescriptorSet
-            DescriptorProtos.FileDescriptorSet fds = DescriptorProtos.FileDescriptorSet.parseFrom(descBytes);
-            if (fds.getFileCount() == 0) {
-                LOGGER.error("No file descriptors found in compiled proto set.");
-                handleError(ctx, 500, "No file descriptors found in compiled proto set.");
-                return;
-            }
-
-            // 7. Build FileDescriptors, respecting dependencies (DAG sort)
-            Map<String, Descriptors.FileDescriptor> builtDescriptors = new HashMap<>();
-            Queue<DescriptorProtos.FileDescriptorProto> toBuild = new LinkedList<>(fds.getFileList());
-            int maxAttempts = toBuild.size() * toBuild.size() + 100;
-            int attempts = 0;
-
-            while (!toBuild.isEmpty()) {
-                if (attempts++ > maxAttempts) {
-                    LOGGER.error("Failed to build file descriptors (circular dependency or missing import?)");
-                    handleError(ctx, 500, "Failed to build file descriptors (circular dependency?)");
-                    return;
-                }
-
-                DescriptorProtos.FileDescriptorProto protoFile = toBuild.poll();
-                List<Descriptors.FileDescriptor> depDescriptors = new ArrayList<>();
-                boolean allDepsReady = true;
-
-                for (String depName : protoFile.getDependencyList()) {
-                    Descriptors.FileDescriptor dep = builtDescriptors.get(depName);
-                    if (dep != null) {
-                        depDescriptors.add(dep);
-                    } else {
-                        // This dependency isn't built yet
-                        allDepsReady = false;
-                        break;
-                    }
-                }
-
-                if (allDepsReady) {
-                    try {
-                        Descriptors.FileDescriptor fd = Descriptors.FileDescriptor.buildFrom(
-                                protoFile,
-                                depDescriptors.toArray(new Descriptors.FileDescriptor[0])
-                        );
-                        builtDescriptors.put(protoFile.getName(), fd);
-                    } catch (Descriptors.DescriptorValidationException e) {
-                        LOGGER.error("Proto descriptor validation failed for {}", protoFile.getName(), e);
-                        handleError(ctx, 500, "Descriptor validation failed: " + e.getMessage());
-                        return;
-                    }
-                } else {
-                    // Put it back at the end of the queue
-                    toBuild.add(protoFile);
-                }
-            }
-
-            // 8. Find the main FileDescriptor that contains our service
-            final String finalFullServiceName = fullServiceName;
-            Descriptors.FileDescriptor mainFileDescriptor = builtDescriptors.values().stream()
-                    .filter(fd -> fd.getServices().stream()
-                            .anyMatch(s -> s.getFullName().equals(finalFullServiceName)))
-                    .findFirst()
-                    .orElse(null);
-
-            if (mainFileDescriptor == null) {
-                LOGGER.error("Could not find service '{}' in compiled proto definitions.", fullServiceName);
-                handleError(ctx, 500, "Could not find service " + fullServiceName + " in compiled proto definitions.");
-                return;
-            }
-
-
-
-            // 9. Find the ServiceDescriptor and MethodDescriptor
-            Descriptors.ServiceDescriptor serviceDescriptor = mainFileDescriptor.getServices().stream()
-                    .filter(s -> s.getFullName().equals(finalFullServiceName))
-                    .findFirst()
-                    .orElse(null);
-
+            // Find the ServiceDescriptor
+            Descriptors.ServiceDescriptor serviceDescriptor = mainFileDescriptor.findServiceByName(serviceName);
             if (serviceDescriptor == null) {
-                // This check is slightly redundant but safe
-                handleError(ctx, 500, "Failed to find service " + fullServiceName);
+                handleError(ctx, HTTP_SERVER_ERROR, "Failed to find service " + serviceName);
                 return;
             }
 
-            Descriptors.MethodDescriptor methodDescriptor = serviceDescriptor.findMethodByName(endpoint.getMethodName());
-            if (methodDescriptor == null) {
-                handleError(ctx, 500, "Method not found in service: " + endpoint.getMethodName());
+            // Verify the method exists
+            if (serviceDescriptor.findMethodByName(endpoint.getMethodName()) == null) {
+                handleError(ctx, HTTP_SERVER_ERROR, "Method not found in service: " + endpoint.getMethodName());
                 return;
             }
 
-            // 10. Get input/output types
-            Descriptors.Descriptor inputDescriptor = methodDescriptor.getInputType();
-
-
+            // Get request body
             JsonObject requestBody = ctx.body().asJsonObject();
             if (requestBody == null) {
                 requestBody = new JsonObject(); // Treat empty body as empty JSON
             }
 
-            DynamicMessage.Builder requestBuilder = DynamicMessage.newBuilder(inputDescriptor);
-            try {
-                // Use JsonFormat to parse the *entire* JSON body into the Protobuf message
-                // This handles all type conversions, nested objects, and field names.
-                JsonFormat.parser()
-                        .ignoringUnknownFields()
-                        .merge(requestBody.encode(), requestBuilder);
-            } catch (InvalidProtocolBufferException e) {
-                LOGGER.warn("Invalid JSON body for request: {}", e.getMessage());
-                handleError(ctx, 400, "Invalid JSON body for request: " + e.getMessage());
-                return;
-            }
-
             // Make the gRPC call using DynamicGrpcInvoker
-            grpcInvoker.invoke(sd, endpoint.getMethodName(), requestBuilder.build())
+            grpcInvoker.invoke(sd, endpoint.getMethodName(), requestBody)
                 .onSuccess(response -> ctx.response()
                     .putHeader(CONTENT_TYPE, APPLICATION_JSON)
                     .end(response.encode()))
