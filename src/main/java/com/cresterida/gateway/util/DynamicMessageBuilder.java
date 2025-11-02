@@ -6,9 +6,6 @@ import com.google.protobuf.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class DynamicMessageBuilder {
 
     public Message buildMessage(Descriptors.Descriptor descriptor, Object jsonInput) {
