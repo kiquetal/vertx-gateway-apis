@@ -63,3 +63,111 @@ POST http://localhost:8080/api/vehicle
 Content-Type: application/json
 
 {}
+
+### Test Greeter Service - SayHello
+POST http://localhost:8080/api/greeter/sayHello
+Content-Type: application/json
+
+{
+    "name": "World"
+}
+
+### Test Greeter Service - SayHello with empty name
+POST http://localhost:8080/api/greeter/sayHello
+Content-Type: application/json
+
+{
+    "name": ""
+}
+
+### Test Greeter Service - SayHello with different name
+POST http://localhost:8080/api/greeter/sayHello
+Content-Type: application/json
+
+{
+    "name": "Vertx Gateway"
+}
+
+### Register Greeter Service with Endpoints
+POST http://localhost:8080/admin/services
+Content-Type: application/json
+
+{
+    "id": "greeter-service",
+    "name": "Greeter",
+    "packageName": "helloworld",
+    "version": "1.0",
+    "protoDefinition": "syntax = 'proto3'; package helloworld; option go_package = './helloworld'; service Greeter { rpc SayHello (HelloRequest) returns (HelloReply) {} } message HelloRequest { string name = 1; } message HelloReply { string message = 1; }",
+    "burstCapacity": 100,
+    "rateLimitPerSecond": 10,
+    "endpoints": [
+        {
+            "name": "sayHello",
+            "methodName": "SayHello",
+            "inputMessage": "HelloRequest",
+            "outputMessage": "HelloReply",
+            "inputMapping": {
+                "*": "$.*"
+            },
+            "outputMapping": {
+                "*": "$.*"
+            }
+        }
+    ]
+}
+
+### Get Registered Services
+GET http://localhost:8080/admin/services
+
+### Get Specific Service
+GET http://localhost:8080/admin/services/greeter-service
+
+### Test Registered Greeter Service - SayHello
+POST http://localhost:8080/apis/greeter-service/SayHello
+Content-Type: application/json
+
+{
+    "name": "World"
+}
+
+### Test Registered Greeter Service - Different Name
+POST http://localhost:8080/apis/greeter-service/SayHello
+Content-Type: application/json
+
+{
+    "name": "Vertx Dynamic Gateway"
+}
+
+### Test Registered Greeter Service - Empty Name
+POST http://localhost:8080/apis/greeter-service/SayHello
+Content-Type: application/json
+
+{
+    "name": ""
+}
+
+### Test Flow: Register and Invoke Greeter Service
+# 1. First register the service
+POST http://localhost:8080/admin/services
+Content-Type: application/json
+
+{
+    "id": "greeter-service",
+    "name": "Greeter",
+    "packageName": "helloworld",
+    "version": "1.0",
+    "protoDefinition": "syntax = 'proto3'; package helloworld; option go_package = './helloworld'; service Greeter { rpc SayHello (HelloRequest) returns (HelloReply) {} } message HelloRequest { string name = 1; } message HelloReply { string message = 1; }",
+    "burstCapacity": 100,
+    "rateLimitPerSecond": 10
+}
+
+### 2. Verify registration
+GET http://localhost:8080/admin/services/greeter-service
+
+### 3. Invoke the service
+POST http://localhost:8080/apis/greeter-service/SayHello
+Content-Type: application/json
+
+{
+    "name": "Dynamic Gateway"
+}

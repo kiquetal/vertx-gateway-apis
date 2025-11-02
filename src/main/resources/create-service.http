@@ -1,0 +1,28 @@
+POST http://localhost:8080/admin/services
+Content-Type: application/json
+
+{
+  "id": "greeter-service",
+  "name": "Greeter",
+  "packageName": "helloworld",
+  "version": "1.0",
+  "protoDefinition": "syntax = 'proto3'; package helloworld; option go_package = './helloworld'; service Greeter { rpc SayHello (HelloRequest) returns (HelloReply) {} } message HelloRequest { string name = 1; } message HelloReply { string message = 1; }",
+  "burstCapacity": 100,
+  "rateLimitPerSecond": 10,
+  "endpoints": [
+    {
+      "name": "sayHello",
+      "methodName": "SayHello",
+      "inputMessage": "HelloRequest",
+      "outputMessage": "HelloReply",
+      "url": "http://localhost:50051",
+      "port": 50051,
+      "inputMapping": {
+        "*": "$.*"
+      },
+      "outputMapping": {
+        "*": "$.*"
+      }
+    }
+  ]
+}
