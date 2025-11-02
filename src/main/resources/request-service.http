@@ -1,0 +1,65 @@
+### Test Single Object - Vehicle
+POST http://localhost:8080/api/vehicle
+Content-Type: application/json
+
+{
+    "id": "VEH001",
+    "make": "Toyota",
+    "model": "Camry",
+    "year": 2025
+}
+
+### Test List of Items
+POST http://localhost:8080/api/items
+Content-Type: application/json
+
+[
+    {
+        "id": "ITEM001",
+        "name": "Product A",
+        "price": 29.99,
+        "tags": ["electronics", "sale"]
+    },
+    {
+        "id": "ITEM002",
+        "name": "Product B",
+        "price": 49.99,
+        "tags": ["appliance"]
+    }
+]
+
+### Test Single Object - HelloRequest (from current example)
+POST http://localhost:8080/api/hello
+Content-Type: application/json
+
+{
+    "name": "Test User"
+}
+
+### Test Single Object with Nested Fields
+POST http://localhost:8080/api/user
+Content-Type: application/json
+
+{
+    "id": "USER001",
+    "name": "John Doe",
+    "age": 30,
+    "interests": ["reading", "travel"],
+    "address": {
+        "street": "123 Main St",
+        "city": "Springfield",
+        "country": "USA"
+    }
+}
+
+### Test Empty List
+POST http://localhost:8080/api/items
+Content-Type: application/json
+
+[]
+
+### Test Empty Object
+POST http://localhost:8080/api/vehicle
+Content-Type: application/json
+
+{}

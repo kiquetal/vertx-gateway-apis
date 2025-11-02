@@ -24,27 +24,5 @@ public class DynamicGrpcHandler {
         }
     }
 
-    // Example usage:
-    public void example() {
-        // For a single object
-        JsonObject userJson = new JsonObject()
-            .put("name", "John")
-            .put("age", 30);
-        
-        // The same handler works for both cases
-        handleRequest(userProfileDescriptor, userJson)
-            .onSuccess(message -> {
-                // Process the message
-            });
 
-        // For a list of items
-        JsonArray itemsJson = new JsonArray()
-            .add(new JsonObject().put("id", "1"))
-            .add(new JsonObject().put("id", "2"));
-        
-        handleRequest(itemListDescriptor, itemsJson)
-            .onSuccess(message -> {
-                // Process the message
-            });
-    }
 }
