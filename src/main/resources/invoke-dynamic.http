@@ -3,7 +3,7 @@ POST http://localhost:8080/api/greeter/sayHello
 Content-Type: application/json
 
 {
-    "name": "World"
+    "name": "GIVE ME WORLD!"
 }
 
 ### Test with different input

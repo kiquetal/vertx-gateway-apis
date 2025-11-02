@@ -2,10 +2,8 @@ package com.cresterida.gateway.util;
 
 import com.cresterida.gateway.model.ServiceDefinition;
 import com.cresterida.gateway.model.ServiceInstance;
-import com.google.protobuf.DescriptorProtos;
-import com.google.protobuf.Descriptors;
-import com.google.protobuf.DynamicMessage;
-import com.google.protobuf.Message;
+import com.google.protobuf.*;
+import com.google.protobuf.util.JsonFormat;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.MethodDescriptor;
@@ -62,7 +60,21 @@ public class DynamicGrpcInvoker {
                     );
 
                     // Convert response to JsonObject
-                    return protoMessageToJson(response);
+                    try {
+                        // 1. Use the printer to convert the protobuf message to a valid JSON string
+                        String jsonResponseString = JsonFormat.printer()
+                                .preservingProtoFieldNames() // or not, your choice
+                                .print(response);
+
+                        // 2. Parse that valid JSON string into a Vert.x JsonObject
+                        JsonObject jsonResponse = new JsonObject(jsonResponseString);
+
+                        // 3. Complete the promise with the JsonObject
+                        promise.complete(jsonResponse);
+                    } catch (InvalidProtocolBufferException e) {
+                        promise.fail(e);
+                    }
+
                 } catch (Exception e) {
                     LOGGER.error("Error while processing request", e);
                     return Future.<JsonObject>failedFuture(e);
@@ -70,6 +82,7 @@ public class DynamicGrpcInvoker {
                     // Ensure channel is shutdown
                     shutdownChannel(channel);
                 }
+                return null;
             });
 
         } catch (Exception e) {
