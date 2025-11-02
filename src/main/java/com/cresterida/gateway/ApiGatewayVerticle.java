@@ -73,7 +73,7 @@ public class ApiGatewayVerticle extends AbstractVerticle {
     });
 
     this.adminHandler = new AdminServiceHandler(registry, limiters);
-    this.apisHandler = new ApisServiceHandler(registry);
+    this.apisHandler = new ApisServiceHandler(registry, vertx);
 
     Router router = Router.router(vertx);
     router.route().handler(BodyHandler.create());

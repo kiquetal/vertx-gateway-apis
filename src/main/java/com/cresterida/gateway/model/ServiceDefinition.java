@@ -104,6 +104,16 @@ public class ServiceDefinition {
     public String getUpstreamBaseUrl() { return upstreamBaseUrl; }
     public boolean isStripPrefix() { return stripPrefix; }
 
+    // Returns an active instance from the list of instances, or null if no instances are available
+    public ServiceInstance getActiveInstance() {
+        if (instances == null || instances.isEmpty()) {
+            return null;
+        }
+        // For now, simply return the first instance
+        // TODO: Implement more sophisticated instance selection based on health checks or load balancing
+        return instances.get(0);
+    }
+
     public JsonObject toJson() {
         JsonObject json = new JsonObject()
             .put("id", id)

@@ -3,21 +3,23 @@ package com.cresterida.gateway.handlers;
 import com.cresterida.gateway.registry.ServiceRegistry;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
+import io.vertx.core.Vertx;
 
 public class ApisServiceHandler {
 
-    private  ServiceRegistry serviceRegistry;
+    private final ServiceRegistry serviceRegistry;
+    private final Vertx vertx;
 
     public ApisServiceHandler(
-            ServiceRegistry serviceRegistry
+            ServiceRegistry serviceRegistry,
+            Vertx vertx
     ) {
         this.serviceRegistry = serviceRegistry;
+        this.vertx = vertx;
     }
 
-
-
     public void registerRoutes(Router router) {
-        DynamicGrpcProxyHandler grpcHandler = new DynamicGrpcProxyHandler();
+        DynamicGrpcProxyHandler grpcHandler = new DynamicGrpcProxyHandler(vertx);
 
         router.route("/api/*").handler(ctx -> {
             String servicePath = ctx.request().path();
@@ -37,8 +39,4 @@ public class ApisServiceHandler {
             }
         });
     }
-
-
-
-
 }

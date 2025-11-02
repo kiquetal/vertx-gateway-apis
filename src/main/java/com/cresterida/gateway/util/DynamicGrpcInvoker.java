@@ -16,9 +16,6 @@ import io.vertx.core.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
@@ -50,7 +47,7 @@ public class DynamicGrpcInvoker {
             // Create method descriptor
             MethodDescriptor<Message, Message> methodDescriptor = createMethodDescriptor(
                 service.getProtoDefinition(),
-                service.getPackage() + "." + service.getName(),
+                service.getPackageName() + "." + service.getName(),
                 methodName
             );
 
@@ -65,8 +62,7 @@ public class DynamicGrpcInvoker {
                     );
 
                     // Convert response to JsonObject
-                    JsonObject jsonResponse = protoMessageToJson(response);
-                    return jsonResponse;
+                    return protoMessageToJson(response);
                 } catch (Exception e) {
                     LOGGER.error("Error while processing request", e);
                     return Future.<JsonObject>failedFuture(e);
