@@ -1,6 +1,7 @@
 package com.cresterida.gateway.handlers;
 
 import com.cresterida.gateway.model.ServiceDefinition;
+import com.cresterida.gateway.model.ServiceInstance;
 import com.cresterida.gateway.ratelimit.TokenBucket;
 import com.cresterida.gateway.registry.ServiceRegistry;
 import com.cresterida.gateway.util.CounterMetrics;
@@ -21,7 +22,7 @@ public class AdminServiceHandler {
     private final ServiceRegistry registry;
     private final Map<String, TokenBucket> limiters;
 
-    private Logger logger = LoggerFactory.getLogger(AdminServiceHandler.class);
+    private final Logger logger = LoggerFactory.getLogger(AdminServiceHandler.class);
     public AdminServiceHandler(ServiceRegistry registry, Map<String, TokenBucket> limiters) {
         this.registry = registry;
         this.limiters = limiters;
@@ -35,7 +36,16 @@ public class AdminServiceHandler {
     public void handleAddService(RoutingContext ctx) {
         try {
             JsonObject body = ctx.body().asJsonObject();
-            ServiceDefinition def = ServiceDefinition.fromJson(body);
+            ServiceDefinition def = new ServiceDefinition.Builder()
+                .setId(body.getString("id"))
+                .setName(body.getString("name"))
+                .setPackage(body.getString("packageName"))
+                .setVersion(body.getString("version"))
+                .setProtoDefinition(body.getString("protoDefinition"))
+                .setBurstCapacity(body.getInteger("burstCapacity", 100))
+                .setRateLimitPerSecond(body.getInteger("rateLimitPerSecond", 10))
+                .build();
+
             registry.add(def);
             limiters.put(def.getId(), new TokenBucket(def.getBurstCapacity(), def.getRateLimitPerSecond()));
             ctx.response().setStatusCode(201)
@@ -69,7 +79,16 @@ public class AdminServiceHandler {
         String id = ctx.pathParam("id");
         try {
             JsonObject body = ctx.body().asJsonObject();
-            ServiceDefinition incoming = ServiceDefinition.fromJson(body.put("id", id));
+            ServiceDefinition incoming = new ServiceDefinition.Builder()
+                .setId(id)
+                .setName(body.getString("name"))
+                .setPackage(body.getString("packageName"))
+                .setVersion(body.getString("version"))
+                .setProtoDefinition(body.getString("protoDefinition"))
+                .setBurstCapacity(body.getInteger("burstCapacity", 100))
+                .setRateLimitPerSecond(body.getInteger("rateLimitPerSecond", 10))
+                .build();
+
             Optional<ServiceDefinition> updated = registry.update(id, incoming);
             if (updated.isEmpty()) {
                 fail(ctx, 404, "Service not found");
@@ -106,7 +125,7 @@ public class AdminServiceHandler {
 
     public  void registerRoutes(Router router)
     {
-        router.post("/admin/services").handler(this::handleListServices);
+        router.post("/admin/services").handler(this::handleAddService);
         router.get("/admin/services").handler(CounterMetrics.withMetrics(this::handleListServices));
         router.get("/admin/services/:id").handler(CounterMetrics.withMetrics(this::handleGetService));
         router.put("/admin/services/:id").handler(this::handleUpdateService);
