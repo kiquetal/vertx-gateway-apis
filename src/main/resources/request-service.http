@@ -88,7 +88,8 @@ Content-Type: application/json
     "name": "Vertx Gateway"
 }
 
-### Register Greeter Service with Endpoints
+### Register Greeter Service with Endpoints (COMPLETE)
+# This registration payload includes every field that AdminServiceHandler.handleAddService reads
 POST http://localhost:8080/admin/services
 Content-Type: application/json
 
@@ -98,6 +99,8 @@ Content-Type: application/json
     "packageName": "helloworld",
     "version": "1.0",
     "protoDefinition": "syntax = 'proto3'; package helloworld; option go_package = './helloworld'; service Greeter { rpc SayHello (HelloRequest) returns (HelloReply) {} } message HelloRequest { string name = 1; } message HelloReply { string message = 1; }",
+    "pathPrefix": "/greeter",
+    "upstreamBaseUrl": "http://localhost:50051",
     "burstCapacity": 100,
     "rateLimitPerSecond": 10,
     "endpoints": [
@@ -106,6 +109,8 @@ Content-Type: application/json
             "methodName": "SayHello",
             "inputMessage": "HelloRequest",
             "outputMessage": "HelloReply",
+            "url": "http://localhost",
+            "port": 50051,
             "inputMapping": {
                 "*": "$.*"
             },
@@ -122,7 +127,8 @@ GET http://localhost:8080/admin/services
 ### Get Specific Service
 GET http://localhost:8080/admin/services/greeter-service
 
-### Test Registered Greeter Service - SayHello
+### Test Registered Greeter Service - SayHello (invoke via gateway)
+# After registering (previous request) invoke using service id and method name.
 POST http://localhost:8080/apis/greeter-service/SayHello
 Content-Type: application/json
 
@@ -146,28 +152,7 @@ Content-Type: application/json
     "name": ""
 }
 
-### Test Flow: Register and Invoke Greeter Service
-# 1. First register the service
-POST http://localhost:8080/admin/services
-Content-Type: application/json
-
-{
-    "id": "greeter-service",
-    "name": "Greeter",
-    "packageName": "helloworld",
-    "version": "1.0",
-    "protoDefinition": "syntax = 'proto3'; package helloworld; option go_package = './helloworld'; service Greeter { rpc SayHello (HelloRequest) returns (HelloReply) {} } message HelloRequest { string name = 1; } message HelloReply { string message = 1; }",
-    "burstCapacity": 100,
-    "rateLimitPerSecond": 10
-}
-
-### 2. Verify registration
-GET http://localhost:8080/admin/services/greeter-service
-
-### 3. Invoke the service
-POST http://localhost:8080/apis/greeter-service/SayHello
-Content-Type: application/json
-
-{
-    "name": "Dynamic Gateway"
-}
+### Flow: Register (complete) and Invoke
+# 1. Register using the 'Register Greeter Service with Endpoints (COMPLETE)' request above
+# 2. Verify with GET /admin/services/greeter-service
+# 3. Invoke POST /apis/greeter-service/SayHello with a JSON object body (HelloRequest)
