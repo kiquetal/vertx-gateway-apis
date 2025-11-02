@@ -29,6 +29,7 @@ public class DynamicGrpcProxyHandler implements Handler<RoutingContext> {
     }
 
     private void handleError(RoutingContext ctx, int statusCode, String message) {
+        LOGGER.error("Handling error: {} - {}", statusCode, message);
         ctx.response()
             .setStatusCode(statusCode)
             .putHeader(CONTENT_TYPE, APPLICATION_JSON)
@@ -88,6 +89,24 @@ public class DynamicGrpcProxyHandler implements Handler<RoutingContext> {
                 requestBody = new JsonObject(); // Treat empty body as empty JSON
             }
 
+            // Validate basic request
+            Descriptors.MethodDescriptor methodDesc = serviceDescriptor.findMethodByName(endpoint.getMethodName());
+            if (!requestBody.isEmpty() && endpoint.getInputMapping().isEmpty()) {
+                // Only validate fields if we have a request body and no explicit mapping
+                for (String fieldName : requestBody.fieldNames()) {
+                    if (methodDesc.getInputType().findFieldByName(fieldName) == null) {
+                        handleError(ctx, 400, String.format(
+                            "Invalid field '%s'. Available fields are: %s",
+                            fieldName,
+                            methodDesc.getInputType().getFields().stream()
+                                .map(Descriptors.FieldDescriptor::getName)
+                                .toList()
+                        ));
+                        return;
+                    }
+                }
+            }
+
             // Make the gRPC call using DynamicGrpcInvoker
             grpcInvoker.invoke(sd, endpoint.getMethodName(), requestBody)
                 .onSuccess(response -> ctx.response()
@@ -95,7 +114,7 @@ public class DynamicGrpcProxyHandler implements Handler<RoutingContext> {
                     .end(response.encode()))
                 .onFailure(e -> {
                     LOGGER.error("Error processing gRPC request", e);
-                    handleError(ctx, HTTP_SERVER_ERROR, "Error processing gRPC request: " + e.getMessage());
+                    handleError(ctx, HTTP_SERVER_ERROR, "Error processing request: " + e.getMessage());
                 });
 
         } catch (Exception e) {

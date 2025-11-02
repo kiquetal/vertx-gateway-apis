@@ -3,7 +3,7 @@ POST http://localhost:8080/api/greeter/sayHello
 Content-Type: application/json
 
 {
-    "nameH": "Volveran las oscuras golondrinas!!!!"
+    "namex": "Volveran las oscuras golondrinas!!!!"
 }
 
 ### Test with different input
