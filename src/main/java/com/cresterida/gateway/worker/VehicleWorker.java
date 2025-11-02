@@ -1,10 +1,18 @@
 package com.cresterida.gateway.worker;
 import com.cresterida.gateway.worker.model.Vehicle;
+import com.github.os72.protocjar.Protoc;
+import com.google.protobuf.DescriptorProtos;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 public class VehicleWorker extends AbstractVerticle {
     private static final Logger LOGGER = LoggerFactory.getLogger(VehicleWorker.class);
     @Override
@@ -21,7 +29,70 @@ public class VehicleWorker extends AbstractVerticle {
         });
         LOGGER.info("VehicleWorker started with virtual threads");
         startPromise.complete();
+
+
+        LOGGER.info("Starting the test to identify proto file");
+        String protoContent = """
+                "syntax = \\"proto3\\";\\n" +
+                                      "package helloworld;\\n" +
+                                      "service Greeter {\\n" +
+                                      "  rpc SayHello (HelloRequest) returns (HelloReply) {}\\n" +
+                                      "}\\n" +
+                                      "message HelloRequest {\\n" +
+                                      "  string name = 1;\\n" +
+                                      "}\\n" +
+                                      "message HelloReply {\\n" +
+                                      "  string message = 1;\\n" +
+                                      "}\\n
+                
+     
+                """;
+
+        Path tempDir  = null;
+        Path protoFile = null;
+        try {
+            tempDir = Files.createTempDirectory("proto-");
+            protoFile = tempDir.resolve("helloworld.proto");
+            Files.writeString(protoFile, protoContent);
+        } catch (IOException e) {
+                        throw new RuntimeException(e);
+
+        }
+        File descriptorFile = null;
+        try {
+            descriptorFile = File.createTempFile("descriptor",".desc");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        String[] args = new String[]{
+                "--proto_path=" + tempDir.toAbsolutePath(),
+                "--descriptor_set_out=" + descriptorFile.getAbsolutePath(),
+                protoFile.toAbsolutePath().toString()
+        };
+        try {
+            int exitCode = Protoc.runProtoc(args);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        readBinaryFiles(descriptorFile);
+
+        LOGGER.info("Proto file created at: {}", protoFile.toAbsolutePath());
+
     }
+    private void readBinaryFiles(File descriptorFile) {
+        try {
+            byte[] fileContent = Files.readAllBytes(descriptorFile.toPath());
+            DescriptorProtos.FileDescriptorSet descriptorSet = DescriptorProtos.FileDescriptorSet.parseFrom(fileContent);
+
+
+            LOGGER.info("Parsed Descriptor Set: {}", descriptorSet);
+        } catch (IOException e) {
+            LOGGER.error("Error reading descriptor file", e);
+        }
+    }
+
     private void processVehicle(Vehicle vehicle, io.vertx.core.eventbus.Message<JsonObject> message) {
         long startTime = System.currentTimeMillis();
         try {
