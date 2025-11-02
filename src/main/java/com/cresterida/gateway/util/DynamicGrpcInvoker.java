@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 public class DynamicGrpcInvoker {
     private static final Logger LOGGER = LoggerFactory.getLogger(DynamicGrpcInvoker.class);
     private final Vertx vertx;
+
     private final int defaultTimeout;
 
     public DynamicGrpcInvoker(Vertx vertx, int defaultTimeoutSeconds) {
@@ -54,7 +55,7 @@ public class DynamicGrpcInvoker {
             );
 
             // Make the gRPC call
-            vertx.executeBlocking(p -> {
+            vertx.executeBlocking(() -> {
                 try {
                     Message response = io.grpc.stub.ClientCalls.blockingUnaryCall(
                         channel,
@@ -65,18 +66,13 @@ public class DynamicGrpcInvoker {
 
                     // Convert response to JsonObject
                     JsonObject jsonResponse = protoMessageToJson(response);
-                    p.complete(jsonResponse);
+                    return jsonResponse;
                 } catch (Exception e) {
-                    p.fail(e);
+                    LOGGER.error("Error while processing request", e);
+                    return Future.<JsonObject>failedFuture(e);
                 } finally {
                     // Ensure channel is shutdown
                     shutdownChannel(channel);
-                }
-            }, ar -> {
-                if (ar.succeeded()) {
-                    promise.complete(ar.result());
-                } else {
-                    promise.fail(ar.cause());
                 }
             });
 
@@ -176,28 +172,5 @@ public class DynamicGrpcInvoker {
         return new JsonObject(message.toString());
     }
 
-    // Inner class for message marshalling
-    private static class DynamicMessageMarshaller implements MethodDescriptor.Marshaller<Message> {
-        private final Descriptors.Descriptor messageDescriptor;
 
-        DynamicMessageMarshaller(Descriptors.Descriptor messageDescriptor) {
-            this.messageDescriptor = messageDescriptor;
-        }
-
-        @Override
-        public Message parse(InputStream stream) {
-            try {
-                return DynamicMessage.newBuilder(messageDescriptor)
-                    .mergeFrom(stream)
-                    .build();
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to parse message", e);
-            }
-        }
-
-        @Override
-        public InputStream stream(Message message) {
-            return new ByteArrayInputStream(message.toByteArray());
-        }
-    }
 }
