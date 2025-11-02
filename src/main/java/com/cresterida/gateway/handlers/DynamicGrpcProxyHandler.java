@@ -1,19 +1,21 @@
 package com.cresterida.gateway.handlers;
 
-import com.cresterida.gateway.model.ServiceDefinition;
 import com.cresterida.gateway.model.EndpointDefinition;
+import com.cresterida.gateway.model.ServiceDefinition;
 import com.cresterida.gateway.util.DynamicGrpcInvoker;
 import com.github.os72.protocjar.Protoc;
-import com.google.protobuf.*;
+import com.google.protobuf.Descriptors;
+import com.google.protobuf.DynamicMessage;
+import com.google.protobuf.DescriptorProtos;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import io.vertx.core.Vertx;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,16 +23,22 @@ import java.util.*;
 
 public class DynamicGrpcProxyHandler implements Handler<RoutingContext> {
     private static final Logger LOGGER = LogManager.getLogger(DynamicGrpcProxyHandler.class);
+    private static final String CONTENT_TYPE = "Content-Type";
+    private static final String APPLICATION_JSON = "application/json";
+    private static final int DEFAULT_TIMEOUT_SECONDS = 30;
+    private static final int HTTP_NOT_FOUND = 404;
+    private static final int HTTP_SERVER_ERROR = 500;
+
     private final DynamicGrpcInvoker grpcInvoker;
 
     public DynamicGrpcProxyHandler(Vertx vertx) {
-        this.grpcInvoker = new DynamicGrpcInvoker(vertx, 30); // 30 seconds timeout
+        this.grpcInvoker = new DynamicGrpcInvoker(vertx, DEFAULT_TIMEOUT_SECONDS);
     }
 
     private void handleError(RoutingContext ctx, int statusCode, String message) {
         ctx.response()
             .setStatusCode(statusCode)
-            .putHeader("Content-Type", "application/json")
+            .putHeader(CONTENT_TYPE, APPLICATION_JSON)
             .end(new JsonObject()
                 .put("error", message)
                 .put("status", statusCode)
@@ -47,8 +55,8 @@ public class DynamicGrpcProxyHandler implements Handler<RoutingContext> {
         }
 
         // Paths for temp files
-        Path tempProtoFile = null;
-        Path tempDescFile = null;
+        Path tempProtoFile;
+        Path tempDescFile;
         try {
             // Extract method name from path
             String path = ctx.request().path();
@@ -58,7 +66,7 @@ public class DynamicGrpcProxyHandler implements Handler<RoutingContext> {
             Map<String, EndpointDefinition> endpoints = sd.getEndpoints();
             EndpointDefinition endpoint = endpoints.get(methodName);
             if (endpoint == null) {
-                handleError(ctx, 404, "Endpoint not found: " + methodName);
+                handleError(ctx, HTTP_NOT_FOUND, "Endpoint not found: " + methodName);
                 return;
             }
 
@@ -77,11 +85,11 @@ public class DynamicGrpcProxyHandler implements Handler<RoutingContext> {
             // 3. Prepare 'protoc' compiler arguments
             String[] protocArgs = {
                     // Include path for the temp file
-                    "-I=" + tempProtoFile.getParent().toAbsolutePath().toString(),
+                    "-I=" + tempProtoFile.getParent().toAbsolutePath(),
                     // Include standard Google types (like Timestamp)
                     "--include_imports",
                     // Output path for the binary descriptor set
-                    "--descriptor_set_out=" + tempDescFile.toAbsolutePath().toString(),
+                    "--descriptor_set_out=" + tempDescFile.toAbsolutePath(),
                     // The proto file to compile
                     tempProtoFile.toAbsolutePath().toString()
             };
@@ -91,7 +99,7 @@ public class DynamicGrpcProxyHandler implements Handler<RoutingContext> {
             int exitCode = Protoc.runProtoc(protocArgs);
             if (exitCode != 0) {
                 LOGGER.error("protoc compiler failed with exit code: {}", exitCode);
-                handleError(ctx, 500, "protoc compiler failed. Exit code: " + exitCode);
+                handleError(ctx, HTTP_SERVER_ERROR, "protoc compiler failed. Exit code: " + exitCode);
                 return;
             }
 
@@ -215,19 +223,17 @@ public class DynamicGrpcProxyHandler implements Handler<RoutingContext> {
 
             // Make the gRPC call using DynamicGrpcInvoker
             grpcInvoker.invoke(sd, endpoint.getMethodName(), requestBuilder.build())
-                .onSuccess(response -> {
-                    ctx.response()
-                        .putHeader("Content-Type", "application/json")
-                        .end(response.encode());
-                })
+                .onSuccess(response -> ctx.response()
+                    .putHeader(CONTENT_TYPE, APPLICATION_JSON)
+                    .end(response.encode()))
                 .onFailure(e -> {
                     LOGGER.error("Error processing gRPC request", e);
-                    handleError(ctx, 500, "Error processing gRPC request: " + e.getMessage());
+                    handleError(ctx, HTTP_SERVER_ERROR, "Error processing gRPC request: " + e.getMessage());
                 });
 
         } catch (Exception e) {
             LOGGER.error("Error setting up gRPC request", e);
-            handleError(ctx, 500, "Error setting up gRPC request: " + e.getMessage());
+            handleError(ctx, HTTP_SERVER_ERROR, "Error setting up gRPC request: " + e.getMessage());
         }
     }
 }
