@@ -446,3 +446,323 @@ This example demonstrates:
 - Response transformation
 
 The key advantage is that all service-specific information is stored in the registry, allowing the code to be completely generic and work with any gRPC service that follows the registration format
+
+### 5. Handling Lists in Dynamic gRPC Mapping
+
+#### Example Proto Definition with Lists
+```protobuf
+syntax = "proto3";
+package inventory;
+
+service InventoryService {
+    rpc ProcessItems (ItemList) returns (ProcessResponse) {}
+}
+
+message Item {
+    string id = 1;
+    string name = 2;
+    double price = 3;
+    repeated string tags = 4;  // A list within an item
+}
+
+message ItemList {
+    repeated Item items = 1;   // List of items
+}
+
+message ProcessResponse {
+    bool success = 1;
+    repeated string processedIds = 2;
+    string message = 3;
+}
+```
+
+#### JSON to Proto Mapping for Lists
+Example JSON input:
+```json
+{
+  "items": [
+    {
+      "id": "item1",
+      "name": "Product A",
+      "price": 29.99,
+      "tags": ["electronics", "sale"]
+    },
+    {
+      "id": "item2",
+      "name": "Product B",
+      "price": 49.99,
+      "tags": ["appliance"]
+    }
+  ]
+}
+```
+
+#### Dynamic Message Building with Lists
+```java
+public class DynamicMessageBuilder {
+    public DynamicMessage buildMessageFromJson(Descriptors.Descriptor descriptor, JsonObject jsonInput) {
+        DynamicMessage.Builder messageBuilder = DynamicMessage.newBuilder(descriptor);
+        
+        // Iterate through all fields in the descriptor
+        for (Descriptors.FieldDescriptor field : descriptor.getFields()) {
+            if (field.isRepeated()) {
+                handleRepeatedField(messageBuilder, field, jsonInput);
+            } else {
+                handleSingleField(messageBuilder, field, jsonInput);
+            }
+        }
+        
+        return messageBuilder.build();
+    }
+    
+    private void handleRepeatedField(DynamicMessage.Builder builder, 
+                                   Descriptors.FieldDescriptor field, 
+                                   JsonObject jsonInput) {
+        JsonArray jsonArray = jsonInput.getJsonArray(field.getName());
+        if (jsonArray == null) return;
+        
+        switch (field.getType()) {
+            case MESSAGE:
+                // Handle repeated message (complex objects)
+                for (int i = 0; i < jsonArray.size(); i++) {
+                    JsonObject elementJson = jsonArray.getJsonObject(i);
+                    DynamicMessage nestedMessage = buildMessageFromJson(
+                        field.getMessageType(), 
+                        elementJson
+                    );
+                    builder.addRepeatedField(field, nestedMessage);
+                }
+                break;
+                
+            case STRING:
+            case INT32:
+            case DOUBLE:
+                // Handle other primitive types
+                for (Object element : jsonArray) {
+                    builder.addRepeatedField(field, convertJsonValueToProtoValue(element, field));
+                }
+                break;
+        }
+    }
+    
+    private void handleSingleField(DynamicMessage.Builder builder, 
+                                 Descriptors.FieldDescriptor field, 
+                                 JsonObject jsonInput) {
+        if (!jsonInput.containsKey(field.getName())) return;
+        
+        Object value = jsonInput.getValue(field.getName());
+        if (field.getType() == Descriptors.FieldDescriptor.Type.MESSAGE) {
+            JsonObject nestedJson = jsonInput.getJsonObject(field.getName());
+            DynamicMessage nestedMessage = buildMessageFromJson(
+                field.getMessageType(), 
+                nestedJson
+            );
+            builder.setField(field, nestedMessage);
+        } else {
+            builder.setField(field, convertJsonValueToProtoValue(value, field));
+        }
+    }
+    
+    private Object convertJsonValueToProtoValue(Object value, Descriptors.FieldDescriptor field) {
+        switch (field.getType()) {
+            case INT32:
+            case SINT32:
+            case FIXED32:
+                return ((Number) value).intValue();
+            case INT64:
+            case SINT64:
+            case FIXED64:
+                return ((Number) value).longValue();
+            case DOUBLE:
+                return ((Number) value).doubleValue();
+            case FLOAT:
+                return ((Number) value).floatValue();
+            case BOOL:
+                return (Boolean) value;
+            case STRING:
+                return String.valueOf(value);
+            case ENUM:
+                return field.getEnumType().findValueByName(String.valueOf(value));
+            default:
+                throw new IllegalArgumentException("Unsupported field type: " + field.getType());
+        }
+    }
+}
+
+// Usage example
+DynamicMessageBuilder messageBuilder = new DynamicMessageBuilder();
+DynamicMessage requestMessage = messageBuilder.buildMessageFromJson(itemListDescriptor, jsonInput);
+```
+
+This approach:
+1. Uses descriptor information to dynamically handle fields
+2. Supports nested messages automatically
+3. Handles type conversion for all protobuf types
+4. Processes repeated fields without hardcoding
+5. Maintains type safety through proper conversion
+
+#### Service Registry Configuration for Lists
+```json
+{
+  "serviceId": "inventory-service",
+  "name": "InventoryService",
+  "package": "inventory",
+  "endpoints": [
+    {
+      "name": "processItems",
+      "methodName": "ProcessItems",
+      "inputMessage": "ItemList",
+      "outputMessage": "ProcessResponse",
+      "inputMapping": {
+        "$": "$.items",  // Map root array to items
+        "$[*]": {       // Map each array element
+          "*": "$.*"    // Dynamic field mapping
+        }
+      },
+      "outputMapping": {
+        "*": "$.*"      // Dynamic response mapping
+      }
+    }
+  ]
+}
+```
+
+The new mapping syntax:
+- Uses `$` to represent the root element
+- Uses `*` for dynamic field matching
+- Uses `[*]` for array iterations
+- Supports nested mappings with `{}`
+
+### 6. Single Object Dynamic Mapping Example
+
+#### Example Proto Definition with Single Object
+```protobuf
+syntax = "proto3";
+package user;
+
+service UserService {
+    rpc UpdateUserProfile (UserProfile) returns (UpdateResponse) {}
+}
+
+message UserProfile {
+    string id = 1;
+    string name = 2;
+    int32 age = 3;
+    repeated string interests = 4;    // A list within the object
+    Address address = 5;             // Nested message
+}
+
+message Address {
+    string street = 1;
+    string city = 2;
+    string country = 3;
+}
+
+message UpdateResponse {
+    bool success = 1;
+    string message = 2;
+    UserProfile updated_profile = 3;
+}
+```
+
+#### JSON Input Example
+```json
+{
+    "id": "user123",
+    "name": "John Doe",
+    "age": 30,
+    "interests": ["reading", "travel"],
+    "address": {
+        "street": "123 Main St",
+        "city": "Springfield",
+        "country": "USA"
+    }
+}
+```
+
+#### Service Registry Configuration for Single Object
+```json
+{
+  "serviceId": "user-service",
+  "name": "UserService",
+  "package": "user",
+  "endpoints": [
+    {
+      "name": "updateProfile",
+      "methodName": "UpdateUserProfile",
+      "inputMessage": "UserProfile",
+      "outputMessage": "UpdateResponse",
+      "inputMapping": {
+        "*": "$.*"    // Direct field mapping from root object
+      },
+      "outputMapping": {
+        "profile": "$.updated_profile.*",
+        "status": {
+          "success": "$.success",
+          "message": "$.message"
+        }
+      }
+    }
+  ]
+}
+```
+
+In this case, since we're dealing with a single object:
+- The `*: "$.*"` mapping indicates that all fields from the root JSON object map directly to the proto message fields
+- No need for array iteration syntax `[*]` in the root level
+- Nested objects (like `address`) are handled automatically
+- Arrays within the object (like `interests`) are still handled as repeated fields
+
+The same `DynamicMessageBuilder` handles both cases:
+```java
+// For single object mapping
+JsonObject userProfileJson = new JsonObject()
+    .put("id", "user123")
+    .put("name", "John Doe")
+    .put("age", 30);
+
+DynamicMessage message = messageBuilder.buildMessageFromJson(userProfileDescriptor, userProfileJson);
+
+// The builder detects it's a single object because:
+// 1. The root descriptor is not a repeated field
+// 2. The JSON input is an object, not an array
+```
+
+#### Key Differences from List Example
+1. Root Level Mapping:
+   - List example: `"$": "$.items"` (maps to repeated field)
+   - Single object: `"*": "$.*"` (maps directly to message fields)
+
+2. Field Access:
+   - List example: Needs array iteration `$[*]`
+   - Single object: Direct field access `$.*`
+
+3. Type Handling:
+   ```java
+   private void handleSingleField(DynamicMessage.Builder builder, 
+                                Descriptors.FieldDescriptor field, 
+                                JsonObject jsonInput) {
+       // Same code as before, but now handling root level fields directly
+       if (!jsonInput.containsKey(field.getName())) return;
+       
+       Object value = jsonInput.getValue(field.getName());
+       if (field.getType() == Descriptors.FieldDescriptor.Type.MESSAGE) {
+           // Handle nested objects
+           JsonObject nestedJson = jsonInput.getJsonObject(field.getName());
+           DynamicMessage nestedMessage = buildMessageFromJson(
+               field.getMessageType(), 
+               nestedJson
+           );
+           builder.setField(field, nestedMessage);
+       } else if (field.isRepeated()) {
+           // Handle arrays within the object
+           JsonArray array = jsonInput.getJsonArray(field.getName());
+           handleRepeatedField(builder, field, array);
+       } else {
+           // Handle simple fields
+           builder.setField(field, convertJsonValueToProtoValue(value, field));
+       }
+   }
+   ```
+
+This approach maintains the same dynamic handling logic but simplifies the mapping when dealing with single objects. The `DynamicMessageBuilder` automatically adapts its behavior based on the message descriptor and input JSON structure.
