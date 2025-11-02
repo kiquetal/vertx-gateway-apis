@@ -1,12 +1,11 @@
 package com.cresterida.gateway.model;
 
-import java.util.Map;
+import io.vertx.core.json.JsonObject;
 
 public class ServiceInstance {
     private String host;
     private int port;
     private String health;
-    private Map<String, String> metadata;
 
     public ServiceInstance(String host, int port) {
         this.host = host;
@@ -30,11 +29,10 @@ public class ServiceInstance {
         this.health = health;
     }
 
-    public Map<String, String> getMetadata() {
-        return metadata;
-    }
-
-    public void setMetadata(Map<String, String> metadata) {
-        this.metadata = metadata;
+    public JsonObject toJson() {
+        return new JsonObject()
+            .put("host", host)
+            .put("port", port)
+            .put("health", health);
     }
 }

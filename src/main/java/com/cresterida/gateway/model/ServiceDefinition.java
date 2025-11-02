@@ -1,91 +1,155 @@
 package com.cresterida.gateway.model;
 
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.json.JsonArray;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.HashMap;
+import java.util.Collections;
+import java.net.URI;
 
 public class ServiceDefinition {
-    private String serviceId;
-    private String name;
-    private String packageName;
-    private String version;
-    private String protoDefinition;
-    private List<ServiceInstance> instances;
-    private Map<String, EndpointDefinition> endpoints;
+    private final String id;
+    private final String name;
+    private final String packageName;
+    private final String version;
+    private final String protoDefinition;
+    private final List<ServiceInstance> instances;
+    private final Map<String, EndpointDefinition> endpoints;
+    private final int burstCapacity;
+    private final int rateLimitPerSecond;
+    private final Map<String, JsonFieldMapping> fieldMappings;
+    private final String pathPrefix;
+    private final String upstreamBaseUrl;
+    private final boolean stripPrefix;
 
-    public ServiceDefinition() {
-        this.instances = new CopyOnWriteArrayList<>();
+    private ServiceDefinition(Builder builder) {
+        this.id = builder.id;
+        this.name = builder.name;
+        this.packageName = builder.packageName;
+        this.version = builder.version;
+        this.protoDefinition = builder.protoDefinition;
+        this.instances = new ArrayList<>(builder.instances);
+        this.endpoints = new HashMap<>(builder.endpoints);
+        this.burstCapacity = builder.burstCapacity;
+        this.rateLimitPerSecond = builder.rateLimitPerSecond;
+        this.fieldMappings = new HashMap<>(builder.fieldMappings);
+        this.pathPrefix = builder.pathPrefix;
+        this.upstreamBaseUrl = builder.upstreamBaseUrl;
+        this.stripPrefix = builder.stripPrefix;
     }
 
-    // Gets an active (healthy) instance using a simple round-robin approach
+    public static ServiceDefinition fromJson(JsonObject json) {
+        if (json == null) {
+            throw new IllegalArgumentException("JSON cannot be null");
+        }
+
+        Builder builder = new Builder()
+            .setId(json.getString("id"))
+            .setName(json.getString("name"))
+            .setPackage(json.getString("packageName"))
+            .setVersion(json.getString("version"))
+            .setProtoDefinition(json.getString("protoDefinition"))
+            .setBurstCapacity(json.getInteger("burstCapacity", 100))
+            .setRateLimitPerSecond(json.getInteger("rateLimitPerSecond", 10))
+            .setPathPrefix(json.getString("pathPrefix", "/"))
+            .setUpstreamBaseUrl(json.getString("upstreamBaseUrl"))
+            .setStripPrefix(json.getBoolean("stripPrefix", false));
+
+        if (json.containsKey("instances")) {
+            JsonArray instances = json.getJsonArray("instances");
+            if (instances != null) {
+                instances.forEach(inst -> {
+                    if (inst instanceof JsonObject) {
+                        JsonObject instObj = (JsonObject) inst;
+                        builder.addInstance(new ServiceInstance(
+                            instObj.getString("host"),
+                            instObj.getInteger("port")
+                        ));
+                    }
+                });
+            }
+        }
+
+        return builder.build();
+    }
+
+    public JsonObject toJson() {
+        JsonObject json = new JsonObject()
+            .put("id", id)
+            .put("name", name)
+            .put("packageName", packageName)
+            .put("version", version)
+            .put("protoDefinition", protoDefinition)
+            .put("burstCapacity", burstCapacity)
+            .put("rateLimitPerSecond", rateLimitPerSecond)
+            .put("pathPrefix", pathPrefix)
+            .put("upstreamBaseUrl", upstreamBaseUrl)
+            .put("stripPrefix", stripPrefix);
+
+        if (!instances.isEmpty()) {
+            JsonArray instancesArray = new JsonArray();
+            instances.forEach(instance -> {
+                instancesArray.add(instance.toJson());
+            });
+            json.put("instances", instancesArray);
+        }
+
+        return json;
+    }
+
+    // Getters
+    public String getId() { return id; }
+    public String getName() { return name; }
+    public String getPackage() { return packageName; }
+    public String getVersion() { return version; }
+    public String getProtoDefinition() { return protoDefinition; }
+    public List<ServiceInstance> getInstances() { return Collections.unmodifiableList(instances); }
     public ServiceInstance getActiveInstance() {
         return instances.stream()
             .filter(instance -> "UP".equals(instance.getHealth()))
             .findFirst()
             .orElse(null);
     }
+    public Map<String, EndpointDefinition> getEndpoints() { return Collections.unmodifiableMap(endpoints); }
+    public EndpointDefinition getEndpoint(String name) { return endpoints.get(name); }
+    public int getBurstCapacity() { return burstCapacity; }
+    public int getRateLimitPerSecond() { return rateLimitPerSecond; }
+    public Map<String, JsonFieldMapping> getFieldMappings() { return Collections.unmodifiableMap(fieldMappings); }
+    public String getPathPrefix() { return pathPrefix; }
+    public String getUpstreamBaseUrl() { return upstreamBaseUrl; }
+    public boolean isStripPrefix() { return stripPrefix; }
 
-    public String getServiceId() {
-        return serviceId;
-    }
+    public static class Builder {
+        private String id;
+        private String name;
+        private String packageName;
+        private String version;
+        private String protoDefinition;
+        private List<ServiceInstance> instances = new ArrayList<>();
+        private Map<String, EndpointDefinition> endpoints = new HashMap<>();
+        private int burstCapacity = 100;
+        private int rateLimitPerSecond = 10;
+        private Map<String, JsonFieldMapping> fieldMappings = new HashMap<>();
+        private String pathPrefix = "/";
+        private String upstreamBaseUrl;
+        private boolean stripPrefix = false;
 
-    public void setServiceId(String serviceId) {
-        this.serviceId = serviceId;
-    }
+        public Builder setId(String id) { this.id = id; return this; }
+        public Builder setName(String name) { this.name = name; return this; }
+        public Builder setPackage(String packageName) { this.packageName = packageName; return this; }
+        public Builder setVersion(String version) { this.version = version; return this; }
+        public Builder setProtoDefinition(String protoDefinition) { this.protoDefinition = protoDefinition; return this; }
+        public Builder addInstance(ServiceInstance instance) { this.instances.add(instance); return this; }
+        public Builder setBurstCapacity(int burstCapacity) { this.burstCapacity = burstCapacity; return this; }
+        public Builder setRateLimitPerSecond(int rateLimitPerSecond) { this.rateLimitPerSecond = rateLimitPerSecond; return this; }
+        public Builder setPathPrefix(String pathPrefix) { this.pathPrefix = pathPrefix; return this; }
+        public Builder setUpstreamBaseUrl(String upstreamBaseUrl) { this.upstreamBaseUrl = upstreamBaseUrl; return this; }
+        public Builder setStripPrefix(boolean stripPrefix) { this.stripPrefix = stripPrefix; return this; }
 
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getPackage() {
-        return packageName;
-    }
-
-    public void setPackage(String packageName) {
-        this.packageName = packageName;
-    }
-
-    public String getVersion() {
-        return version;
-    }
-
-    public void setVersion(String version) {
-        this.version = version;
-    }
-
-    public String getProtoDefinition() {
-        return protoDefinition;
-    }
-
-    public void setProtoDefinition(String protoDefinition) {
-        this.protoDefinition = protoDefinition;
-    }
-
-    public List<ServiceInstance> getInstances() {
-        return instances;
-    }
-
-    public void setInstances(List<ServiceInstance> instances) {
-        this.instances = new CopyOnWriteArrayList<>(instances);
-    }
-
-    public void addInstance(ServiceInstance instance) {
-        this.instances.add(instance);
-    }
-
-    public Map<String, EndpointDefinition> getEndpoints() {
-        return endpoints;
-    }
-
-    public void setEndpoints(Map<String, EndpointDefinition> endpoints) {
-        this.endpoints = endpoints;
-    }
-
-    public EndpointDefinition getEndpoint(String name) {
-        return endpoints.get(name);
+        public ServiceDefinition build() {
+            return new ServiceDefinition(this);
+        }
     }
 }
