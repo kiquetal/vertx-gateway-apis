@@ -1,7 +1,11 @@
 package com.cresterida.gateway.worker;
+
+import com.cresterida.gateway.util.ClientCalls;
 import com.cresterida.gateway.worker.model.Vehicle;
 import com.github.os72.protocjar.Protoc;
 import com.google.protobuf.DescriptorProtos;
+import com.google.protobuf.DynamicMessage;
+import com.google.protobuf.Message;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.json.JsonObject;
@@ -33,21 +37,21 @@ public class VehicleWorker extends AbstractVerticle {
 
         LOGGER.info("Starting the test to identify proto file");
         String protoContent = """
-                "syntax = \\"proto3\\";\\n" +
-                                      "package helloworld;\\n" +
-                                      "service Greeter {\\n" +
-                                      "  rpc SayHello (HelloRequest) returns (HelloReply) {}\\n" +
-                                      "}\\n" +
-                                      "message HelloRequest {\\n" +
-                                      "  string name = 1;\\n" +
-                                      "}\\n" +
-                                      "message HelloReply {\\n" +
-                                      "  string message = 1;\\n" +
-                                      "}\\n
-                
-     
-                """;
+syntax = "proto3";
+package helloworld;
 
+service Greeter {
+    rpc SayHello (HelloRequest) returns (HelloReply) {}
+}
+
+message HelloRequest {
+    string name = 1;
+}
+
+message HelloReply {
+    string message = 1;
+}
+""";
         Path tempDir  = null;
         Path protoFile = null;
         try {
@@ -82,14 +86,93 @@ public class VehicleWorker extends AbstractVerticle {
 
     }
     private void readBinaryFiles(File descriptorFile) {
+        LOGGER.info("Reading descriptor file from: {}", descriptorFile.getAbsolutePath());
         try {
             byte[] fileContent = Files.readAllBytes(descriptorFile.toPath());
+            LOGGER.info("File content size: {} bytes", fileContent.length);
             DescriptorProtos.FileDescriptorSet descriptorSet = DescriptorProtos.FileDescriptorSet.parseFrom(fileContent);
+            LOGGER.info("Reading descriptor set from: {}", descriptorSet.getFileList());
 
+            extractServiceDependencies(descriptorSet);
 
-            LOGGER.info("Parsed Descriptor Set: {}", descriptorSet);
+            // Get the HelloRequest message descriptor
+            DescriptorProtos.FileDescriptorProto fileProto = descriptorSet.getFile(0);
+            DescriptorProtos.DescriptorProto messageType = fileProto.getMessageType(0);
+
+            // Create dynamic message builder for HelloRequest
+            DynamicMessage.Builder builder = DynamicMessage.newBuilder(messageType);
+
+            // Find the 'name' field descriptor and set its value
+            DescriptorProtos.FieldDescriptorProto nameField = messageType.getField(0);
+            String fieldName = nameField.getName();
+            LOGGER.info("Setting field '{}' in request", fieldName);
+
+            builder.setField(
+                builder.getDescriptorForType().findFieldByName(fieldName),
+                "Here from vertx!!!"
+            );
+
+            // Build the message and log it
+            DynamicMessage request = builder.build();
+            LOGGER.info("Created request message: {}", request.toString());
+
+            // Make the gRPC call
+            try {
+                String fullServiceName = fileProto.getPackage() + ".Greeter";
+                LOGGER.info("Making gRPC call to service: {}", fullServiceName);
+
+                Message response = ClientCalls.makeUnaryCall(
+                    "localhost",
+                    50051,
+                    fullServiceName,
+                    "SayHello",
+                    request,
+                    fileProto
+                );
+
+                LOGGER.info("Received response: {}", response.toString());
+            } catch (Exception e) {
+                LOGGER.error("Error making gRPC call: {}", e.getMessage(), e);
+                throw new RuntimeException("Failed to make gRPC call", e);
+            }
+
         } catch (IOException e) {
-            LOGGER.error("Error reading descriptor file", e);
+            LOGGER.error("Error reading descriptor file: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to read descriptor file", e);
+        } finally {
+            descriptorFile.delete();
+        }
+    }
+    private void extractServiceDependencies(DescriptorProtos.FileDescriptorSet descriptorSet) {
+        for (DescriptorProtos.FileDescriptorProto fileProto : descriptorSet.getFileList()) {
+            // Log basic file info
+            LOGGER.info("Package: {}", fileProto.getPackage());
+            LOGGER.info("Dependencies: {}", fileProto.getDependencyList());
+
+            // Extract services
+            for (DescriptorProtos.ServiceDescriptorProto service : fileProto.getServiceList()) {
+                LOGGER.info("Service name: {}", service.getName());
+
+                // Extract methods
+                for (DescriptorProtos.MethodDescriptorProto method : service.getMethodList()) {
+                    LOGGER.info("Method: {} -> Input: {}, Output: {}",
+                            method.getName(),
+                            method.getInputType(),
+                            method.getOutputType()
+                    );
+                }
+            }
+
+            // Extract message types
+            for (DescriptorProtos.DescriptorProto message : fileProto.getMessageTypeList()) {
+                LOGGER.info("Message type: {}", message.getName());
+                for (DescriptorProtos.FieldDescriptorProto field : message.getFieldList()) {
+                    LOGGER.info("Field: {} (type: {})",
+                            field.getName(),
+                            field.getType()
+                    );
+                }
+            }
         }
     }
 
