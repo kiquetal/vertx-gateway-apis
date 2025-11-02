@@ -1,13 +1,12 @@
 package com.cresterida.gateway;
 
-import com.cresterida.gateway.model.ServiceDefinition;
-import com.cresterida.gateway.ratelimit.TokenBucket;
 import com.cresterida.gateway.registry.ServiceRegistry;
-import com.cresterida.gateway.util.CounterMetrics;
+import com.cresterida.gateway.ratelimit.TokenBucket;
 import com.cresterida.gateway.worker.VehicleWorker;
 import io.micrometer.core.instrument.Counter;
 import io.vertx.core.DeploymentOptions;
 import com.cresterida.gateway.handlers.AdminServiceHandler;
+import com.cresterida.gateway.handlers.ApisServiceHandler;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.ThreadingModel;
@@ -41,6 +40,7 @@ public class ApiGatewayVerticle extends AbstractVerticle {
     private HttpServer httpServer;
     private final Map<String, TokenBucket> limiters = new ConcurrentHashMap<>();
     private AdminServiceHandler adminHandler;
+    private ApisServiceHandler apisHandler;
     private Counter requestCounter;
 
     @Override
@@ -64,17 +64,16 @@ public class ApiGatewayVerticle extends AbstractVerticle {
         startPromise.fail(err);
       });
 
+    HealthChecks hc = HealthChecks.create(vertx);
+    HealthCheckHandler healthCheckHandler = HealthCheckHandler.createWithHealthChecks(hc);
+
+    hc.register("application-ready", promise -> {
+        // Here you can add checks to verify if the application is ready
+        promise.complete(Status.OK());
+    });
+
     this.adminHandler = new AdminServiceHandler(registry, limiters);
-
-
-      HealthChecks hc = HealthChecks.create(vertx);
-      HealthCheckHandler healthCheckHandler = HealthCheckHandler.createWithHealthChecks(hc);
-
-      hc.register("application-ready", promise -> {
-          // Here you can add checks to verify if the application is ready
-          promise.complete(Status.OK());
-      });
-
+    this.apisHandler = new ApisServiceHandler(registry);
 
     Router router = Router.router(vertx);
     router.route().handler(BodyHandler.create());
@@ -83,10 +82,10 @@ public class ApiGatewayVerticle extends AbstractVerticle {
     router.get("/health/ready").handler(healthCheckHandler);
     router.get("/metrics").handler(PrometheusScrapingHandler.create());
 
-    // Admin API routes - these should match before the catch-all proxy
+    // Register API routes before admin routes
+    apisHandler.registerRoutes(router);
 
-    //Register the routes in the AdminServiceHandler
-
+    // Admin API routes
     adminHandler.registerRoutes(router);
 
     // Test route for VehicleWorker
@@ -116,9 +115,7 @@ public class ApiGatewayVerticle extends AbstractVerticle {
     LOGGER.info("Initializing metrics and handlers...");
 
     LOGGER.trace("HERE 1");
-    router.route().handler(this::resolveServiceHandler);
-    router.route().handler(this::rateLimitHandler);
-    router.route().handler(this::proxyHandler);
+    // Note: API routes are now handled by ApisServiceHandler
 
     int port = getPort();
     this.httpServer = vertx.createHttpServer();
@@ -183,30 +180,6 @@ public class ApiGatewayVerticle extends AbstractVerticle {
     return 8080;
   }
 
-  // ===== Gateway Handlers =====
-
-  private void resolveServiceHandler(RoutingContext ctx) {
-    String path = ctx.request().path();
-    Optional<ServiceDefinition> match = registry.resolveByPath(path);
-    if (match.isEmpty()) {
-      fail(ctx, 404, "No service matches path " + path);
-      return;
-    }
-    ctx.put("service", match.get());
-    ctx.next();
-  }
-
-  private void rateLimitHandler(RoutingContext ctx) {
-    ServiceDefinition sd = ctx.get("service");
-    if (sd == null) { ctx.next(); return; }
-    TokenBucket bucket = limiters.computeIfAbsent(sd.getId(), id -> new TokenBucket(sd.getBurstCapacity(), sd.getRateLimitPerSecond()));
-    if (!bucket.tryConsume()) {
-      fail(ctx, 429, "Rate limit exceeded for service: " + sd.getName());
-      return;
-    }
-    ctx.next();
-  }
-
   private void initializeMetrics() {
       var registry = BackendRegistries.getDefaultNow();
       if (registry != null) {
@@ -218,103 +191,9 @@ public class ApiGatewayVerticle extends AbstractVerticle {
       } else {
           LOGGER.error("Failed to initialize metrics: registry is null");
       }
-
   }
 
-  private void proxyHandler(RoutingContext ctx) {
-    ServiceDefinition sd = ctx.get("service");
-    LOGGER.info("Proxying service " + sd.getName());
-    if (sd == null) { ctx.next(); return; }
 
-    LOGGER.debug("Processing request for path: {}", ctx.request().path());
-    if (requestCounter != null) {
-        requestCounter.increment();
-        LOGGER.debug("Request counter incremented for path: {}", ctx.request().path());
-    } else {
-        LOGGER.warn("Request counter is null for path: {} - metrics may not be initialized properly", ctx.request().path());
-    }
-    // Store start time in context for logging
-    ctx.put("startTime", System.nanoTime());
-    String incomingPath = ctx.request().path();
-    String pathToUpstream;
-    if (sd.isStripPrefix()) {
-      String prefix = sd.getPathPrefix();
-      if (incomingPath.equals(prefix)) {
-        pathToUpstream = "/"; // root
-      } else if (incomingPath.startsWith(prefix + "/")) {
-        pathToUpstream = incomingPath.substring(prefix.length());
-      } else {
-        // shouldn't happen due to match
-        pathToUpstream = incomingPath;
-      }
-    } else {
-      pathToUpstream = incomingPath;
-    }
-
-    // Build upstream URI
-    URI base = URI.create(sd.getUpstreamBaseUrl());
-    String fullPath = normalizePath(base.getPath(), pathToUpstream);
-
-    HttpMethod method = ctx.request().method();
-    HttpRequest<Buffer> req = client.request(method, base.getPort() == -1 ? ("https".equalsIgnoreCase(base.getScheme()) ? 443 : 80) : base.getPort(), base.getHost(), fullPath)
-      .ssl("https".equalsIgnoreCase(base.getScheme()));
-
-    // Copy query params
-    ctx.queryParams().forEach(entry -> req.addQueryParam(entry.getKey(), entry.getValue()));
-
-    // Copy headers (filter hop-by-hop)
-    ctx.request().headers().forEach(h -> {
-      String key = h.getKey();
-      if (isHopByHopHeader(key)) return;
-      req.putHeader(key, h.getValue());
-    });
-    // Override Host header to upstream's host
-    req.putHeader("Host", base.getHost());
-
-    // Send body if present
-    Buffer body = ctx.body().buffer();
-    if (body != null) {
-      req.sendBuffer(body).onComplete(ar -> handleProxyResult(ctx, ar));
-    } else {
-      req.send().onComplete(ar -> handleProxyResult(ctx, ar));
-    }
-  }
-
-  private void handleProxyResult(RoutingContext ctx, io.vertx.core.AsyncResult<HttpResponse<Buffer>> ar) {
-    if (ar.failed()) {
-      fail(ctx, 502, "Upstream error: " + ar.cause().getMessage());
-      return;
-    }
-    HttpResponse<Buffer> resp = ar.result();
-    // Copy status and headers
-    ctx.response().setStatusCode(resp.statusCode());
-    resp.headers().forEach(h -> {
-      if (!isHopByHopHeader(h.getKey())) {
-        ctx.response().putHeader(h.getKey(), h.getValue());
-      }
-    });
-    // Write body
-    Buffer body = resp.bodyAsBuffer();
-    if (body == null) {
-      ctx.response().end();
-    } else {
-      ctx.response().end(body);
-    }
-  }
-
-  private static boolean isHopByHopHeader(String key) {
-    String k = key.toLowerCase(Locale.ROOT);
-    return k.equals("connection") || k.equals("keep-alive") || k.equals("transfer-encoding") || k.equals("te") || k.equals("trailer") || k.equals("proxy-authorization") || k.equals("proxy-authenticate") || k.equals("upgrade");
-  }
-
-  private static String normalizePath(String basePath, String path) {
-    String a = (basePath == null || basePath.isBlank()) ? "" : basePath;
-    String b = (path == null) ? "" : path;
-    if (!a.startsWith("/")) a = "/" + a;
-    if (a.endsWith("/")) a = a.substring(0, a.length() - 1);
-    if (!b.startsWith("/")) b = "/" + b;
-    return a + b;
-  }
 
   private void fail(RoutingContext ctx, int status, String message) {
     JsonObject err = new JsonObject()

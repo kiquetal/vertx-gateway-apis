@@ -36,18 +36,7 @@ public class AdminServiceHandler {
     public void handleAddService(RoutingContext ctx) {
         try {
             JsonObject body = ctx.body().asJsonObject();
-            ServiceDefinition def = new ServiceDefinition.Builder()
-                .setId(body.getString("id"))
-                .setName(body.getString("name"))
-                .setPackage(body.getString("packageName"))
-                .setVersion(body.getString("version"))
-                .setProtoDefinition(body.getString("protoDefinition"))
-                    .setPathPrefix(body.getString("pathPrefix", "/"))
-                    .setUpstreamBaseUrl(body.getString("upstreamBaseUrl"))
-
-                .setBurstCapacity(body.getInteger("burstCapacity", 100))
-                .setRateLimitPerSecond(body.getInteger("rateLimitPerSecond", 10))
-                .build();
+            ServiceDefinition def = ServiceDefinition.fromJson(body);
 
             registry.add(def);
             limiters.put(def.getId(), new TokenBucket(def.getBurstCapacity(), def.getRateLimitPerSecond()));

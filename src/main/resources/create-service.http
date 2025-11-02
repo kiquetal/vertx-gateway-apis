@@ -6,9 +6,15 @@ Content-Type: application/json
   "name": "Greeter",
   "packageName": "helloworld",
   "version": "1.0",
-  "protoDefinition": "syntax = 'proto3'; package helloworld; option go_package = './helloworld'; service Greeter { rpc SayHello (HelloRequest) returns (HelloReply) {} } message HelloRequest { string name = 1; } message HelloReply { string message = 1; }",
-  "pathPrefix": "/greeter",
-  "upstreamBaseUrl": "http://localhost:50051",
+  "protoDefinition": "syntax = \"proto3\";\n\npackage helloworld;\n\nservice Greeter {\n  rpc SayHello (HelloRequest) returns (HelloReply) {}\n}\n\nmessage HelloRequest {\n  string name = 1;\n}\n\nmessage HelloReply {\n  string message = 1;\n}",
+  "pathPrefix": "/api/greeter",
+  "upstreamBaseUrl": "dns:///localhost:50051",
+  "instances": [
+    {
+      "host": "localhost",
+      "port": 50051
+    }
+  ],
   "burstCapacity": 100,
   "rateLimitPerSecond": 10,
   "endpoints": [
@@ -17,13 +23,11 @@ Content-Type: application/json
       "methodName": "SayHello",
       "inputMessage": "HelloRequest",
       "outputMessage": "HelloReply",
-      "url": "http://localhost",
-      "port": 50051,
       "inputMapping": {
-        "*": "$.*"
+        "name": "$.name"
       },
       "outputMapping": {
-        "*": "$.*"
+        "message": "$.message"
       }
     }
   ]

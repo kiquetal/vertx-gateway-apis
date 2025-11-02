@@ -1,5 +1,26 @@
-### GET request to example server
-GET https://examples.http-client.intellij.net/get
-    ?generated-in=IntelliJ IDEA
+### Test Dynamic GRPC Greeter Service
+POST http://localhost:8080/api/greeter/sayHello
+Content-Type: application/json
 
-###
+{
+    "name": "World"
+}
+
+### Test with different input
+POST http://localhost:8080/api/greeter/sayHello
+Content-Type: application/json
+
+{
+    "name": "Vertx Gateway"
+}
+
+### Expected responses will be:
+# First request:
+# {
+#   "message": "Hello World"
+# }
+#
+# Second request:
+# {
+#   "message": "Hello Vertx Gateway"
+# }
