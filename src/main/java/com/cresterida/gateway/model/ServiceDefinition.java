@@ -23,6 +23,7 @@ public class ServiceDefinition {
     private final String pathPrefix;
     private final String upstreamBaseUrl;
     private final boolean stripPrefix;
+    private final ServiceType type;
 
     private ServiceDefinition(Builder builder) {
         this.id = builder.id;
@@ -38,6 +39,9 @@ public class ServiceDefinition {
         this.pathPrefix = builder.pathPrefix;
         this.upstreamBaseUrl = builder.upstreamBaseUrl;
         this.stripPrefix = builder.stripPrefix;
+        // Default to GRPC if protoDefinition is present, otherwise HTTP
+        this.type = builder.type != null ? builder.type :
+                   (builder.protoDefinition != null && !builder.protoDefinition.isEmpty() ? ServiceType.GRPC : ServiceType.HTTP);
     }
 
     public static ServiceDefinition fromJson(JsonObject json) {
@@ -56,6 +60,12 @@ public class ServiceDefinition {
             .setPathPrefix(json.getString("pathPrefix", "/"))
             .setUpstreamBaseUrl(json.getString("upstreamBaseUrl"))
             .setStripPrefix(json.getBoolean("stripPrefix", false));
+
+        // Set service type, with smart default based on presence of protoDefinition
+        String type = json.getString("type");
+        if (type != null) {
+            builder.setType(ServiceType.valueOf(type.toUpperCase()));
+        }
 
         if (json.containsKey("instances")) {
             JsonArray instances = json.getJsonArray("instances");
@@ -145,6 +155,10 @@ public class ServiceDefinition {
         return json;
     }
 
+    public ServiceType getType() {
+        return type;
+    }
+
     public static class Builder {
         private String id;
         private String name;
@@ -159,6 +173,7 @@ public class ServiceDefinition {
         private String pathPrefix = "/";
         private String upstreamBaseUrl;
         private boolean stripPrefix;
+        private ServiceType type;
 
         public Builder setId(String id) { this.id = id; return this; }
         public Builder setName(String name) { this.name = name; return this; }
@@ -172,6 +187,7 @@ public class ServiceDefinition {
         public Builder setPathPrefix(String pathPrefix) { this.pathPrefix = pathPrefix; return this; }
         public Builder setUpstreamBaseUrl(String upstreamBaseUrl) { this.upstreamBaseUrl = upstreamBaseUrl; return this; }
         public Builder setStripPrefix(boolean stripPrefix) { this.stripPrefix = stripPrefix; return this; }
+        public Builder setType(ServiceType type) { this.type = type; return this; }
 
         public ServiceDefinition build() {
             return new ServiceDefinition(this);

@@ -1,6 +1,7 @@
 package com.cresterida.gateway.registry;
 
 import com.cresterida.gateway.model.ServiceDefinition;
+import com.cresterida.gateway.model.ServiceType;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,6 +33,18 @@ public class ServiceRegistry {
 
     public Optional<ServiceDefinition> remove(String id) {
         return Optional.ofNullable(services.remove(id));
+    }
+
+    public List<ServiceDefinition> listByType(ServiceType type) {
+        return services.values().stream()
+            .filter(service -> service.getType() == type)
+            .collect(Collectors.toList());
+    }
+
+    public Optional<ServiceDefinition> resolveByPath(String path, ServiceType type) {
+        return services.values().stream()
+            .filter(service -> service.getType() == type && path.startsWith(service.getPathPrefix()))
+            .findFirst();
     }
 
     public Optional<ServiceDefinition> resolveByPath(String path) {

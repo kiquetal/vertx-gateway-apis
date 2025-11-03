@@ -1,3 +1,4 @@
+### Create gRPC Service
 POST http://localhost:8080/admin/services
 Content-Type: application/json
 
@@ -26,6 +27,40 @@ Content-Type: application/json
       "outputMessage": "HelloReply",
       "inputMapping": {},
       "outputMapping": {}
+    }
+  ]
+}
+
+### Create HTTP Service
+POST http://localhost:8080/admin/services
+Content-Type: application/json
+
+{
+  "id": "users-service",
+  "name": "Users",
+  "type": "HTTP",
+  "version": "1.0",
+  "pathPrefix": "/api/users",
+  "upstreamBaseUrl": "http://localhost:3000",
+  "stripPrefix": true,
+  "instances": [
+    {
+      "host": "localhost",
+      "port": 3000
+    }
+  ],
+  "burstCapacity": 100,
+  "rateLimitPerSecond": 10,
+  "endpoints": [
+    {
+      "name": "getUsers",
+      "path": "/users",
+      "method": "GET"
+    },
+    {
+      "name": "createUser",
+      "path": "/users",
+      "method": "POST"
     }
   ]
 }
