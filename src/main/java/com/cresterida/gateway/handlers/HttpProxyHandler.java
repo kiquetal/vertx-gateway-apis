@@ -3,10 +3,11 @@ package com.cresterida.gateway.handlers;
 import com.cresterida.gateway.model.ServiceDefinition;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.http.HttpMethod;
+
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.client.WebClient;
+import io.vertx.ext.web.client.WebClientOptions;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import java.net.URI;
@@ -19,7 +20,11 @@ public class HttpProxyHandler implements Handler<RoutingContext> {
     private final WebClient client;
 
     public HttpProxyHandler(Vertx vertx) {
-        this.client = WebClient.create(vertx);
+        WebClientOptions options = new WebClientOptions()
+            .setConnectTimeout(5000)  // 5 seconds
+            .setIdleTimeout(60)       // 1 minute
+            .setKeepAlive(true);
+        this.client = WebClient.create(vertx, options);
     }
 
     @Override
@@ -31,32 +36,51 @@ public class HttpProxyHandler implements Handler<RoutingContext> {
         }
 
         try {
-            // Parse the upstream URL
-            URI upstreamUri = new URI(sd.getUpstreamBaseUrl());
+            // Parse the upstream URL and validate
+            String upstreamUrl = sd.getUpstreamBaseUrl();
+            if (upstreamUrl == null || upstreamUrl.isEmpty()) {
+                throw new IllegalStateException("Upstream URL is not configured for service: " + sd.getId());
+            }
+
+            URI upstreamUri = new URI(upstreamUrl);
+            String host = upstreamUri.getHost();
+            int port = upstreamUri.getPort();
+            if (port == -1) {
+                port = upstreamUri.getScheme().equalsIgnoreCase("https") ? 443 : 80;
+            }
+
+            // Build the path
             String path = ctx.request().path();
-            
-            // Remove prefix if configured
             if (sd.isStripPrefix() && path.startsWith(sd.getPathPrefix())) {
                 path = path.substring(sd.getPathPrefix().length());
             }
-            
+            if (!path.startsWith("/")) {
+                path = "/" + path;
+            }
+
+            LOGGER.debug("Proxying request to {}:{}{}", host, port, path);
+
             // Start building the request
             io.vertx.ext.web.client.HttpRequest<io.vertx.core.buffer.Buffer> request = client
-                .request(ctx.request().method(), 
-                        upstreamUri.getPort(), 
-                        upstreamUri.getHost(), 
-                        path);
+                .request(ctx.request().method(), port, host, path);
 
-            // Copy headers
-            ctx.request().headers().forEach(header -> 
-                request.putHeader(header.getKey(), header.getValue()));
+            // Copy original request headers, excluding hop-by-hop headers
+            ctx.request().headers().forEach(header -> {
+                String headerName = header.getKey();
+                String headerValue = header.getValue();
+                if (!isHopByHopHeader(headerName)) {
+                    request.putHeader(headerName, headerValue);
+                }
+            });
 
-            // Send the request
-            if (ctx.getBody() != null && !ctx.getBody().isEmpty()) {
-                request.sendBuffer(ctx.getBody())
+            // Send the request with or without body
+            if (ctx.body().buffer() != null && ctx.body().buffer().length() > 0) {
+                LOGGER.debug("Sending request with body of size: {}", ctx.body().buffer().length());
+                request.sendBuffer(ctx.body().buffer())
                     .onSuccess(response -> handleResponse(ctx, response))
                     .onFailure(err -> handleError(ctx, err));
             } else {
+                LOGGER.debug("Sending request without body");
                 request.send()
                     .onSuccess(response -> handleResponse(ctx, response))
                     .onFailure(err -> handleError(ctx, err));
@@ -67,21 +91,33 @@ public class HttpProxyHandler implements Handler<RoutingContext> {
         }
     }
 
-    private void handleResponse(RoutingContext ctx, 
+    private void handleResponse(RoutingContext ctx,
                               io.vertx.ext.web.client.HttpResponse<io.vertx.core.buffer.Buffer> response) {
         // Copy status code
         ctx.response().setStatusCode(response.statusCode());
-        
+
         // Copy headers
-        response.headers().forEach(header -> 
+        response.headers().forEach(header ->
             ctx.response().putHeader(header.getKey(), header.getValue()));
-        
+
         // Send response
         if (response.body() != null) {
             ctx.response().end(response.body());
         } else {
             ctx.response().end();
         }
+    }
+
+    private boolean isHopByHopHeader(String headerName) {
+        headerName = headerName.toLowerCase();
+        return headerName.equals("connection") ||
+               headerName.equals("keep-alive") ||
+               headerName.equals("proxy-authenticate") ||
+               headerName.equals("proxy-authorization") ||
+               headerName.equals("te") ||
+               headerName.equals("trailer") ||
+               headerName.equals("transfer-encoding") ||
+               headerName.equals("upgrade");
     }
 
     private void handleError(RoutingContext ctx, Throwable err) {
