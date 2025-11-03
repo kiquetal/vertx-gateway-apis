@@ -11,8 +11,13 @@ import io.vertx.ext.web.client.WebClientOptions;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import java.net.URI;
+import java.net.ConnectException;
+import java.net.UnknownHostException;
+import java.util.concurrent.TimeoutException;
 
 public class HttpProxyHandler implements Handler<RoutingContext> {
+    private record ErrorResponse(int statusCode, String userMessage, String logMessage) {}
+
     private static final Logger LOGGER = LogManager.getLogger(HttpProxyHandler.class);
     private static final String CONTENT_TYPE = "Content-Type";
     private static final String APPLICATION_JSON = "application/json";
@@ -121,14 +126,43 @@ public class HttpProxyHandler implements Handler<RoutingContext> {
     }
 
     private void handleError(RoutingContext ctx, Throwable err) {
-        LOGGER.error("Error processing HTTP request", err);
+        // Determine error type and appropriate response
+        ErrorResponse response = switch (err) {
+            case ConnectException ignored -> new ErrorResponse(
+                502, "Unable to connect to upstream service",
+                "Connection failed to upstream service");
+
+            case TimeoutException ignored -> new ErrorResponse(
+                504, "Upstream service timed out",
+                "Request timed out to upstream service");
+
+            case UnknownHostException ignored -> new ErrorResponse(
+                502, "Unable to resolve upstream host",
+                "Failed to resolve upstream host");
+
+            case IllegalStateException e when e.getMessage().contains("Upstream URL is not configured") ->
+                new ErrorResponse(503, e.getMessage(), "Service configuration error");
+
+            default -> new ErrorResponse(
+                500, "Internal proxy error",
+                "Unexpected error in proxy");
+        };
+
+        // Log the error with appropriate message
+        LOGGER.error(response.logMessage(), err);
+
+        JsonObject jsonResponse = new JsonObject()
+            .put("error", response.userMessage())
+            .put("status", response.statusCode())
+            .put("path", ctx.request().path());
+
+        if (err.getMessage() != null) {
+            jsonResponse.put("detail", err.getMessage());
+        }
+
         ctx.response()
-            .setStatusCode(500)
+            .setStatusCode(response.statusCode())
             .putHeader(CONTENT_TYPE, APPLICATION_JSON)
-            .end(new JsonObject()
-                .put("error", "Error processing request: " + err.getMessage())
-                .put("status", 500)
-                .put("path", ctx.request().path())
-                .encode());
+            .end(jsonResponse.encode());
     }
 }
