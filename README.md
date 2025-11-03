@@ -1,19 +1,76 @@
 # Vert.x API Gateway
 
+A high-performance API Gateway built with Vert.x, supporting both HTTP and gRPC services with dynamic routing, rate limiting, and monitoring.
+
 ## Table of Contents
-1. [Configuration](#configuration)
-   - [Environment Variables](#environment-variables)
-   - [Logging Configuration](#logging-configuration)
-2. [Metrics and Monitoring](#metrics-and-monitoring)
-   - [HTTP Request Metrics](#http-request-metrics)
-   - [Prometheus Metrics](#prometheus-metrics)
-   - [JMX Monitoring](#jmx-monitoring)
-   - [Available Metrics](#available-metrics)
-   - [Grafana Dashboard](#grafana-dashboard)
-3. [Deployment](#deployment)
-   - [Docker Compose Setup](#docker-compose-setup)
-4. [Local Development](#local-development)
-   - [Running with JMX Monitoring](#running-with-jmx-monitoring)
+1. [Features](#features)
+2. [Service Types](#service-types)
+3. [Configuration](#configuration)
+4. [Metrics and Monitoring](#metrics-and-monitoring)
+5. [Deployment](#deployment)
+6. [Local Development](#local-development)
+
+## Features
+
+- **Multi-Protocol Support**: Handle both HTTP and gRPC services
+- **Dynamic Service Registration**: Add and remove services at runtime
+- **Rate Limiting**: Per-service rate limiting with burst capacity
+- **Error Handling**: Comprehensive error handling with detailed responses
+- **Metrics & Monitoring**: Prometheus metrics and JMX monitoring
+- **Protocol Translation**: Automatic JSON to Protocol Buffer conversion for gRPC
+
+## Service Types
+
+### gRPC Services
+
+Register a gRPC service with protobuf definition:
+
+```json
+{
+  "id": "greeter-service",
+  "name": "Greeter",
+  "type": "GRPC",
+  "packageName": "helloworld",
+  "protoDefinition": "...",
+  "pathPrefix": "/api/greeter",
+  "upstreamBaseUrl": "dns:///localhost:50051",
+  "instances": [
+    {
+      "host": "localhost",
+      "port": 50051
+    }
+  ],
+  "endpoints": [
+    {
+      "name": "sayHello",
+      "methodName": "SayHello",
+      "inputMessage": "HelloRequest",
+      "outputMessage": "HelloReply"
+    }
+  ]
+}
+```
+
+### HTTP Services
+
+Register an HTTP service:
+
+```json
+{
+  "id": "users-service",
+  "name": "Users",
+  "type": "HTTP",
+  "pathPrefix": "/api/users",
+  "upstreamBaseUrl": "http://users-service:8080",
+  "stripPrefix": true,
+  "instances": [
+    {
+      "host": "users-service",
+      "port": 8080
+    }
+  ]
+}
+```
 
 ## Configuration
 
@@ -182,3 +239,36 @@ You can then access:
 - The API Gateway at http://localhost:8080
 - Metrics endpoint at http://localhost:8081/metrics
 - JMX monitoring through JConsole or similar tools
+
+## Error Handling
+
+The gateway provides detailed error responses for different failure scenarios:
+
+1. Upstream Connection Issues (502 Bad Gateway):
+```json
+{
+    "error": "Unable to connect to upstream service",
+    "status": 502,
+    "path": "/api/service/endpoint",
+    "detail": "Connection refused: localhost/127.0.0.1:8081"
+}
+```
+
+2. Timeout Issues (504 Gateway Timeout):
+```json
+{
+    "error": "Upstream service timed out",
+    "status": 504,
+    "path": "/api/service/endpoint",
+    "detail": "Operation timed out"
+}
+```
+
+3. Configuration Issues (503 Service Unavailable):
+```json
+{
+    "error": "Upstream URL is not configured for service: service-id",
+    "status": 503,
+    "path": "/api/service/endpoint"
+}
+```
