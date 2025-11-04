@@ -1,3 +1,16 @@
+# Build stage
+FROM maven:3.9-eclipse-temurin-21 AS builder
+WORKDIR /build
+
+# Copy only the POM first to cache dependencies
+COPY pom.xml .
+RUN mvn dependency:go-offline
+
+# Copy source and build
+COPY src ./src
+RUN mvn clean package -DskipTests
+
+# Run stage
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
@@ -5,9 +18,9 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 vertx && \
     adduser --system --uid 1001 --gid 1001 vertx
 
-# Copy the pre-built fat JAR and entrypoint script
-COPY target/*-fat.jar app.jar
-COPY src/main/docker/entrypoint.sh entrypoint.sh
+# Copy the fat JAR
+COPY --from=builder /build/target/*-fat.jar app.jar
+COPY --from=builder /build/src/main/docker/entrypoint.sh entrypoint.sh
 
 RUN mkdir /app/logs && \
     chmod +x /app/entrypoint.sh && \
