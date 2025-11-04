@@ -96,8 +96,6 @@
             <artifactId>grpc-services</artifactId>
             <!-- FIXED: Version removed, managed by grpc-bom -->
         </dependency>
-
-
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-api</artifactId>

@@ -42,7 +42,7 @@ public class ApiGatewayVerticle extends AbstractVerticle {
 
         // API routes with service type routing
         setupApiRoutes(router);
-
+        LOGGER.debug("API routes set up completed");
         // Start the server
         vertx.createHttpServer()
             .requestHandler(router)
@@ -51,7 +51,10 @@ public class ApiGatewayVerticle extends AbstractVerticle {
                 LOGGER.info("Gateway started on port {}", server.actualPort());
                 startPromise.complete();
             })
-            .onFailure(startPromise::fail);
+            .onFailure( err -> {;
+                LOGGER.error("Failed to start gateway: {}", err.getMessage());
+                startPromise.fail(err);
+            });
     }
 
     private void setupAdminRoutes(Router router) {

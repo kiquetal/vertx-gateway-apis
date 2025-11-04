@@ -11,14 +11,6 @@
             </PendingDiffInfo>
           </value>
         </entry>
-        <entry key="$PROJECT_DIR$/monitoring/promtail/promtail-config.yml">
-          <value>
-            <PendingDiffInfo>
-              <option name="filePath" value="$PROJECT_DIR$/monitoring/promtail/promtail-config.yml" />
-              <option name="updatedContent" value="server:&#10;  http_listen_port: 9080&#10;  grpc_listen_port: 0&#10;&#10;positions:&#10;  filename: /tmp/positions.yaml&#10;&#10;clients:&#10;  - url: http://loki:3100/loki/api/v1/push&#10;&#10;scrape_configs:&#10;  - job_name: vertx-logs&#10;    pipeline_stages:&#10;      - json:&#10;          expressions:&#10;            ts: timestamp&#10;            level: level&#10;            logger: logger&#10;            thread: thread&#10;            message: message&#10;      - timestamp:&#10;          source: ts&#10;          format: &quot;2006-01-02 15:04:05.000&quot;&#10;      - labels:&#10;          level:&#10;          logger:&#10;          thread:&#10;    static_configs:&#10;      - targets:&#10;          - localhost&#10;        labels:&#10;          job: vertx&#10;          app: gateway&#10;          __path__: /var/log/vertx/application*.log" />
-            </PendingDiffInfo>
-          </value>
-        </entry>
       </map>
     </option>
   </component>
