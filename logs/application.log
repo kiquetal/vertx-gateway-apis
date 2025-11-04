@@ -1,0 +1,7 @@
+{"timestamp":"2025-11-04 13:34:30.927","level":"INFO","thread":"main","logger":"com.cresterida.gateway.Main","message":"null"}
+{"timestamp":"2025-11-04 13:34:31.287","level":"INFO","thread":"main","logger":"com.cresterida.gateway.Main","message":"io.micrometer.prometheusmetrics.PrometheusMeterRegistry"}
+{"timestamp":"2025-11-04 13:34:31.289","level":"INFO","thread":"main","logger":"com.cresterida.gateway.Main","message":"null"}
+{"timestamp":"2025-11-04 13:34:31.311","level":"INFO","thread":"main","logger":"com.cresterida.gateway.Main","message":"Logger Name: com.cresterida.gateway.Main"}
+{"timestamp":"2025-11-04 13:34:31.310","level":"ERROR","thread":"vert.x-eventloop-thread-1","logger":"com.cresterida.gateway.Main","message":"java.lang.NoClassDefFoundError: org/slf4j/LoggerFactory"}
+{"timestamp":"2025-11-04 13:34:31.312","level":"INFO","thread":"main","logger":"com.cresterida.gateway.Main","message":"Logger Level: INFO"}
+{"timestamp":"2025-11-04 13:34:31.313","level":"INFO","thread":"main","logger":"com.cresterida.gateway.Main","message":"Logger Class: org.apache.logging.log4j.core.Logger"}
