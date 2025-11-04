@@ -31,6 +31,7 @@ USER vertx
 
 # Environment variables
 ENV LOG_LEVEL=INFO
+ENV LOG_LEVEL_APP=DEBUG
 ENV SHUTDOWN_TIMEOUT_MS=30000
 
 # Expose application port
