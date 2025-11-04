@@ -1,12 +1,14 @@
 package com.cresterida.gateway.worker;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 public class VehicleWorkerTest {
-    private static final Logger LOGGER = LoggerFactory.getLogger(VehicleWorkerTest.class);
+    private static final Logger LOGGER = LogManager.getLogger(VehicleWorkerTest.class);
     public static void main(String[] args) throws InterruptedException {
         Vertx vertx = Vertx.vertx();
         CountDownLatch latch = new CountDownLatch(5); // Process 5 vehicles

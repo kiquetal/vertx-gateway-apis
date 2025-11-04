@@ -7,11 +7,12 @@ import com.google.protobuf.Message;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.MethodDescriptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 
 public class ClientCalls {
-    private static final Logger LOGGER = LoggerFactory.getLogger(ClientCalls.class);
+    private static final Logger LOGGER = LogManager.getLogger(ClientCalls.class);
 
     public static Message makeUnaryCall(
             String host,

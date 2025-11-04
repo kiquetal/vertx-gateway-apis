@@ -14,13 +14,14 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 
 import java.util.concurrent.TimeUnit;
 
 public class DynamicGrpcInvoker {
-    private static final Logger LOGGER = LoggerFactory.getLogger(DynamicGrpcInvoker.class);
+    private static final Logger LOGGER = LogManager.getLogger(DynamicGrpcInvoker.class);
     private final Vertx vertx;
 
     private final int defaultTimeout;

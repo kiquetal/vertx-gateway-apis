@@ -3,8 +3,9 @@ package com.cresterida.gateway.util;
 import com.github.os72.protocjar.Protoc;
 import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -12,7 +13,7 @@ import java.nio.file.Path;
 import java.util.*;
 
 public class ProtoDescriptorBuilder {
-    private static final Logger LOGGER = LoggerFactory.getLogger(ProtoDescriptorBuilder.class);
+    private static final Logger LOGGER = LogManager.getLogger(ProtoDescriptorBuilder.class);
 
     public static class BuildResult {
         private final Descriptors.FileDescriptor fileDescriptor;

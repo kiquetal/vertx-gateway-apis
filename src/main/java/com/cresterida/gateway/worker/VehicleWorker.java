@@ -9,8 +9,9 @@ import com.google.protobuf.Message;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.json.JsonObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 
 import java.io.File;
 import java.io.IOException;
@@ -18,7 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class VehicleWorker extends AbstractVerticle {
-    private static final Logger LOGGER = LoggerFactory.getLogger(VehicleWorker.class);
+    private static final Logger LOGGER = LogManager.getLogger(VehicleWorker.class);
     @Override
     public void start(Promise<Void> startPromise) {
         vertx.eventBus().<JsonObject>consumer("vehicle.process", message -> {

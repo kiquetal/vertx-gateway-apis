@@ -5,3 +5,11 @@
 {"timestamp":"2025-11-04 13:34:31.310","level":"ERROR","thread":"vert.x-eventloop-thread-1","logger":"com.cresterida.gateway.Main","message":"java.lang.NoClassDefFoundError: org/slf4j/LoggerFactory"}
 {"timestamp":"2025-11-04 13:34:31.312","level":"INFO","thread":"main","logger":"com.cresterida.gateway.Main","message":"Logger Level: INFO"}
 {"timestamp":"2025-11-04 13:34:31.313","level":"INFO","thread":"main","logger":"com.cresterida.gateway.Main","message":"Logger Class: org.apache.logging.log4j.core.Logger"}
+{"timestamp":"2025-11-04 14:06:03.533","level":"INFO","thread":"com.cresterida.gateway.Main.main()","logger":"com.cresterida.gateway.Main","message":"INFO"}
+{"timestamp":"2025-11-04 14:06:04.602","level":"INFO","thread":"com.cresterida.gateway.Main.main()","logger":"com.cresterida.gateway.Main","message":"io.micrometer.prometheusmetrics.PrometheusMeterRegistry"}
+{"timestamp":"2025-11-04 14:06:04.603","level":"INFO","thread":"com.cresterida.gateway.Main.main()","logger":"com.cresterida.gateway.Main","message":"null"}
+{"timestamp":"2025-11-04 14:06:04.622","level":"INFO","thread":"com.cresterida.gateway.Main.main()","logger":"com.cresterida.gateway.Main","message":"Logger Name: com.cresterida.gateway.Main"}
+{"timestamp":"2025-11-04 14:06:04.623","level":"INFO","thread":"com.cresterida.gateway.Main.main()","logger":"com.cresterida.gateway.Main","message":"Logger Level: INFO"}
+{"timestamp":"2025-11-04 14:06:04.624","level":"INFO","thread":"com.cresterida.gateway.Main.main()","logger":"com.cresterida.gateway.Main","message":"Logger Class: org.apache.logging.log4j.core.Logger"}
+{"timestamp":"2025-11-04 14:06:04.972","level":"INFO","thread":"vert.x-eventloop-thread-0","logger":"com.cresterida.gateway.ApiGatewayVerticle","message":"Gateway started on port 8080"}
+{"timestamp":"2025-11-04 14:06:04.974","level":"INFO","thread":"vert.x-eventloop-thread-2","logger":"com.cresterida.gateway.Main","message":"Gateway started successfully"}

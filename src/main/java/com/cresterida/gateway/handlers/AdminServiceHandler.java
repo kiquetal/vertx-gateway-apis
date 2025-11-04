@@ -11,8 +11,9 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 
 import java.util.List;
 import java.util.Map;
@@ -22,7 +23,7 @@ public class AdminServiceHandler {
     private final ServiceRegistry registry;
     private final Map<String, TokenBucket> limiters;
 
-    private final Logger logger = LoggerFactory.getLogger(AdminServiceHandler.class);
+    private final Logger logger = LogManager.getLogger(AdminServiceHandler.class);
     public AdminServiceHandler(ServiceRegistry registry, Map<String, TokenBucket> limiters) {
         this.registry = registry;
         this.limiters = limiters;
